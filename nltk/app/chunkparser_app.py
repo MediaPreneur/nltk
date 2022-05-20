@@ -347,7 +347,7 @@ class RegexpChunkApp:
             elif devset == "treebank":
                 devset = treebank_chunk.chunked_sents()  # [:100]
             else:
-                raise ValueError("Unknown development set %s" % devset_name)
+                raise ValueError(f"Unknown development set {devset_name}")
 
         self.chunker = None
         """The chunker built from the grammar string"""
@@ -851,7 +851,7 @@ class RegexpChunkApp:
         self.helptabs[self.HELP[0][0]].configure(font=self._font)
         self.helpbox.tag_config("elide", elide=True)
         for (tag, params) in self.HELP_AUTOTAG:
-            self.helpbox.tag_config("tag-%s" % tag, **params)
+            self.helpbox.tag_config(f"tag-{tag}", **params)
         self.show_help(self.HELP[0][0])
 
         # Scroll bar for helpbox
@@ -1004,8 +1004,8 @@ class RegexpChunkApp:
         # Calculate the tag sequence
         tagseq = "\t"
         charnum = [1]
-        for wordnum, (word, pos) in enumerate(gold_tree.leaves()):
-            tagseq += "%s " % pos
+        for word, pos in gold_tree.leaves():
+            tagseq += f"{pos} "
             charnum.append(len(tagseq))
         self.charnum = {
             (i, j): charnum[j]
@@ -1017,10 +1017,9 @@ class RegexpChunkApp:
         for i in range(len(rules) + 1):
             if i == 0:
                 self.devsetbox.insert("end", "Start:\n")
-                self.devsetbox.tag_add("trace", "end -2c linestart", "end -2c")
             else:
                 self.devsetbox.insert("end", "Apply %s:\n" % rules[i - 1])
-                self.devsetbox.tag_add("trace", "end -2c linestart", "end -2c")
+            self.devsetbox.tag_add("trace", "end -2c linestart", "end -2c")
             # Display the tag sequence.
             self.devsetbox.insert("end", tagseq + "\n")
             self.devsetbox.tag_add("wrapindent", "end -2c linestart", "end -2c")
@@ -1070,9 +1069,7 @@ class RegexpChunkApp:
                     pattern = f"(?s)(<{tag}>)(.*?)(</{tag}>)"
                     for m in re.finditer(pattern, text):
                         self.helpbox.tag_add("elide", C % m.start(1), C % m.end(1))
-                        self.helpbox.tag_add(
-                            "tag-%s" % tag, C % m.start(2), C % m.end(2)
-                        )
+                        self.helpbox.tag_add(f"tag-{tag}", C % m.start(2), C % m.end(2))
                         self.helpbox.tag_add("elide", C % m.start(3), C % m.end(3))
             else:
                 self.helptabs[name].config(**self._HELPTAB_BG_PARAMS)
@@ -1246,14 +1243,11 @@ class RegexpChunkApp:
         self._grammarcheck_errs = []
         for lineno, line in enumerate(grammar.split("\n")):
             line = re.sub(r"((\\.|[^#])*)(#.*)?", r"\1", line)
-            line = line.strip()
-            if line:
+            if line := line.strip():
                 try:
                     RegexpChunkRule.fromstring(line)
                 except ValueError as e:
-                    self.grammarbox.tag_add(
-                        "error", "%s.0" % (lineno + 1), "%s.0 lineend" % (lineno + 1)
-                    )
+                    self.grammarbox.tag_add("error", f"{lineno + 1}.0", f"{lineno + 1}.0 lineend")
         self.status["text"] = ""
 
     def update(self, *event):
@@ -1378,8 +1372,8 @@ class RegexpChunkApp:
         if not filename:
             ftypes = [("Chunk Gramamr", ".chunk"), ("All files", "*")]
             filename = asksaveasfilename(filetypes=ftypes, defaultextension=".chunk")
-            if not filename:
-                return
+        if not filename:
+            return
         if self._history and self.normalized_grammar == self.normalize_grammar(
             self._history[-1][0]
         ):
@@ -1408,8 +1402,8 @@ class RegexpChunkApp:
         if not filename:
             ftypes = [("Chunk Gramamr", ".chunk"), ("All files", "*")]
             filename = askopenfilename(filetypes=ftypes, defaultextension=".chunk")
-            if not filename:
-                return
+        if not filename:
+            return
         self.grammarbox.delete("1.0", "end")
         self.update()
         with open(filename) as infile:
@@ -1424,8 +1418,8 @@ class RegexpChunkApp:
         if not filename:
             ftypes = [("Chunk Gramamr History", ".txt"), ("All files", "*")]
             filename = asksaveasfilename(filetypes=ftypes, defaultextension=".txt")
-            if not filename:
-                return
+        if not filename:
+            return
 
         with open(filename, "w") as outfile:
             outfile.write("# Regexp Chunk Parsing Grammar History\n")

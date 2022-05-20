@@ -97,7 +97,7 @@ class DependencyCorpusView(StreamBackedCorpusView):
         # extract word and tag from any of the formats
         if not self._dependencies:
             lines = [line.split("\t") for line in sent.split("\n")]
-            if len(lines[0]) == 3 or len(lines[0]) == 4:
+            if len(lines[0]) in {3, 4}:
                 sent = [(line[0], line[1]) for line in lines]
             elif len(lines[0]) == 10:
                 sent = [(line[1], line[4]) for line in lines]
@@ -109,7 +109,4 @@ class DependencyCorpusView(StreamBackedCorpusView):
                 sent = [word for (word, tag) in sent]
 
         # Return the result.
-        if self._group_by_sent:
-            return [sent]
-        else:
-            return list(sent)
+        return [sent] if self._group_by_sent else list(sent)

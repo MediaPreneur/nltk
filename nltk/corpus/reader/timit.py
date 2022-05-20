@@ -256,7 +256,7 @@ class TimitCorpusReader(CorpusReader):
         return [
             utterance
             for utterance in self._utterances
-            if utterance.startswith(speaker + "/")
+            if utterance.startswith(f"{speaker}/")
         ]
 
     def spkrinfo(self, speaker):
@@ -282,9 +282,7 @@ class TimitCorpusReader(CorpusReader):
         results = []
         for fileid in self._utterance_fileids(utterances, ".phn"):
             with self.open(fileid) as fp:
-                for line in fp:
-                    if line.strip():
-                        results.append(line.split()[-1])
+                results.extend(line.split()[-1] for line in fp if line.strip())
         return results
 
     def phone_times(self, utterances=None):
@@ -294,39 +292,39 @@ class TimitCorpusReader(CorpusReader):
         results = []
         for fileid in self._utterance_fileids(utterances, ".phn"):
             with self.open(fileid) as fp:
-                for line in fp:
-                    if line.strip():
-                        results.append(
-                            (
-                                line.split()[2],
-                                int(line.split()[0]),
-                                int(line.split()[1]),
-                            )
-                        )
+                results.extend(
+                    (
+                        line.split()[2],
+                        int(line.split()[0]),
+                        int(line.split()[1]),
+                    )
+                    for line in fp
+                    if line.strip()
+                )
+
         return results
 
     def words(self, utterances=None):
         results = []
         for fileid in self._utterance_fileids(utterances, ".wrd"):
             with self.open(fileid) as fp:
-                for line in fp:
-                    if line.strip():
-                        results.append(line.split()[-1])
+                results.extend(line.split()[-1] for line in fp if line.strip())
         return results
 
     def word_times(self, utterances=None):
         results = []
         for fileid in self._utterance_fileids(utterances, ".wrd"):
             with self.open(fileid) as fp:
-                for line in fp:
-                    if line.strip():
-                        results.append(
-                            (
-                                line.split()[2],
-                                int(line.split()[0]),
-                                int(line.split()[1]),
-                            )
-                        )
+                results.extend(
+                    (
+                        line.split()[2],
+                        int(line.split()[0]),
+                        int(line.split()[1]),
+                    )
+                    for line in fp
+                    if line.strip()
+                )
+
         return results
 
     def sents(self, utterances=None):
@@ -384,7 +382,7 @@ class TimitCorpusReader(CorpusReader):
         # nltk.chunk conflicts with the stdlib module 'chunk'
         wave = import_from_stdlib("wave")
 
-        w = wave.open(self.open(utterance + ".wav"), "rb")
+        w = wave.open(self.open(f"{utterance}.wav"), "rb")
 
         if end is None:
             end = w.getnframes()
@@ -411,11 +409,8 @@ class TimitCorpusReader(CorpusReader):
     def audiodata(self, utterance, start=0, end=None):
         assert end is None or end > start
         headersize = 44
-        with self.open(utterance + ".wav") as fp:
-            if end is None:
-                data = fp.read()
-            else:
-                data = fp.read(headersize + end * 2)
+        with self.open(f"{utterance}.wav") as fp:
+            data = fp.read() if end is None else fp.read(headersize + end * 2)
         return data[headersize + start * 2 :]
 
     def _utterance_fileids(self, utterances, extension):
@@ -450,7 +445,7 @@ class TimitCorpusReader(CorpusReader):
                     ),
                     file=sys.stderr,
                 )
-                print("system error message:", str(e), file=sys.stderr)
+                print("system error message:", e, file=sys.stderr)
             return
         except ImportError:
             pass
@@ -495,7 +490,7 @@ class SpeakerInfo:
     def __repr__(self):
         attribs = "id sex dr use recdate birthdate ht race edu comments"
         args = [f"{attr}={getattr(self, attr)!r}" for attr in attribs.split()]
-        return "SpeakerInfo(%s)" % (", ".join(args))
+        return f'SpeakerInfo({", ".join(args)})'
 
 
 def read_timit_block(stream):

@@ -86,7 +86,7 @@ class NonbreakingPrefixesCorpusReader(WordListCorpusReader):
         # all languages when fileids==None.
         if lang in self.available_langs:
             lang = self.available_langs[lang]
-            fileids = ["nonbreaking_prefix." + lang]
+            fileids = [f"nonbreaking_prefix.{lang}"]
         return [
             line
             for line in line_tokenize(self.raw(fileids))
@@ -137,7 +137,7 @@ class UnicharsCorpusReader(WordListCorpusReader):
         :return: a list of characters given the specific unicode character category
         """
         if category in self.available_categories:
-            fileids = [category + ".txt"]
+            fileids = [f"{category}.txt"]
         return list(self.raw(fileids).strip())
 
 

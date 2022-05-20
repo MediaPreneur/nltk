@@ -97,9 +97,9 @@ class PropbankCorpusReader(CorpusReader):
         :return: the xml description for the given roleset.
         """
         baseform = roleset_id.split(".")[0]
-        framefile = "frames/%s.xml" % baseform
+        framefile = f"frames/{baseform}.xml"
         if framefile not in self._framefiles:
-            raise ValueError("Frameset file for %s not found" % roleset_id)
+            raise ValueError(f"Frameset file for {roleset_id} not found")
 
         # n.b.: The encoding for XML fileids is specified by the file
         # itself; so we ignore self._encoding here.
@@ -115,9 +115,9 @@ class PropbankCorpusReader(CorpusReader):
         :return: list of xml descriptions for rolesets.
         """
         if baseform is not None:
-            framefile = "frames/%s.xml" % baseform
+            framefile = f"frames/{baseform}.xml"
             if framefile not in self._framefiles:
-                raise ValueError("Frameset file for %s not found" % baseform)
+                raise ValueError(f"Frameset file for {baseform} not found")
             framefiles = [framefile]
         else:
             framefiles = self._framefiles
@@ -146,9 +146,8 @@ class PropbankCorpusReader(CorpusReader):
         block = []
 
         # Read 100 at a time.
-        for i in range(100):
-            line = stream.readline().strip()
-            if line:
+        for _ in range(100):
+            if line := stream.readline().strip():
                 inst = PropbankInstance.parse(
                     line, self._parse_fileid_xform, self._parse_corpus
                 )
@@ -234,21 +233,11 @@ class PropbankInstance:
         return "rel"
 
     def __repr__(self):
-        return "<PropbankInstance: {}, sent {}, word {}>".format(
-            self.fileid,
-            self.sentnum,
-            self.wordnum,
-        )
+        return f"<PropbankInstance: {self.fileid}, sent {self.sentnum}, word {self.wordnum}>"
 
     def __str__(self):
-        s = "{} {} {} {} {} {}".format(
-            self.fileid,
-            self.sentnum,
-            self.wordnum,
-            self.tagger,
-            self.roleset,
-            self.inflection,
-        )
+        s = f"{self.fileid} {self.sentnum} {self.wordnum} {self.tagger} {self.roleset} {self.inflection}"
+
         items = self.arguments + ((self.predicate, "rel"),)
         for (argloc, argid) in sorted(items):
             s += f" {argloc}-{argid}"
@@ -343,10 +332,10 @@ class PropbankChainTreePointer(PropbankPointer):
            ``PropbankTreePointer`` pointers."""
 
     def __str__(self):
-        return "*".join("%s" % p for p in self.pieces)
+        return "*".join(f"{p}" for p in self.pieces)
 
     def __repr__(self):
-        return "<PropbankChainTreePointer: %s>" % self
+        return f"<PropbankChainTreePointer: {self}>"
 
     def select(self, tree):
         if tree is None:
@@ -361,10 +350,10 @@ class PropbankSplitTreePointer(PropbankPointer):
            all ``PropbankTreePointer`` pointers."""
 
     def __str__(self):
-        return ",".join("%s" % p for p in self.pieces)
+        return ",".join(f"{p}" for p in self.pieces)
 
     def __repr__(self):
-        return "<PropbankSplitTreePointer: %s>" % self
+        return f"<PropbankSplitTreePointer: {self}>"
 
     def select(self, tree):
         if tree is None:
@@ -464,13 +453,11 @@ class PropbankTreePointer(PropbankPointer):
                     # End of node's child list: pop up a level.
                     stack.pop()
                     treepos.pop()
-            # word node:
             else:
                 if wordnum == self.wordnum:
                     return tuple(treepos[: len(treepos) - self.height - 1])
-                else:
-                    wordnum += 1
-                    stack.pop()
+                wordnum += 1
+                stack.pop()
 
 
 class PropbankInflection:
@@ -507,7 +494,7 @@ class PropbankInflection:
         return self.form + self.tense + self.aspect + self.person + self.voice
 
     def __repr__(self):
-        return "<PropbankInflection: %s>" % self
+        return f"<PropbankInflection: {self}>"
 
     _VALIDATE = re.compile(r"[igpv\-][fpn\-][pob\-][3\-][ap\-]$")
 

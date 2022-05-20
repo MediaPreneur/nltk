@@ -195,11 +195,7 @@ class BaseTheoremToolCommand(TheoremToolCommand):
         """
         self._goal = goal
 
-        if not assumptions:
-            self._assumptions = []
-        else:
-            self._assumptions = list(assumptions)
-
+        self._assumptions = list(assumptions) if assumptions else []
         self._result = None
         """A holder for the result, to prevent unnecessary re-proving"""
 
@@ -602,12 +598,12 @@ class TheoremToolThread(threading.Thread):
             self._result = self._command()
             if self._verbose:
                 print(
-                    "Thread %s finished with result %s at %s"
-                    % (self._name, self._result, time.localtime(time.time()))
+                    f"Thread {self._name} finished with result {self._result} at {time.localtime(time.time())}"
                 )
+
         except Exception as e:
             print(e)
-            print("Thread %s completed abnormally" % (self._name))
+            print(f"Thread {self._name} completed abnormally")
 
     @property
     def result(self):

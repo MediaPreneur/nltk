@@ -28,7 +28,7 @@ def add_py3_data(path):
             pos = path.index(item) + len(item)
             if path[pos : pos + 4] == ".zip":
                 pos += 4
-            path = path[:pos] + "/PY3" + path[pos:]
+            path = f"{path[:pos]}/PY3{path[pos:]}"
             break
     return path
 

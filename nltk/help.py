@@ -35,7 +35,7 @@ def upenn_tagset(tagpattern=None):
 def _print_entries(tags, tagdict):
     for tag in tags:
         entry = tagdict[tag]
-        defn = [tag + ": " + entry[0]]
+        defn = [f"{tag}: {entry[0]}"]
         examples = wrap(
             entry[1], width=75, initial_indent="    ", subsequent_indent="    "
         )
@@ -43,15 +43,14 @@ def _print_entries(tags, tagdict):
 
 
 def _format_tagset(tagset, tagpattern=None):
-    tagdict = load("help/tagsets/" + tagset + ".pickle")
+    tagdict = load(f"help/tagsets/{tagset}.pickle")
     if not tagpattern:
         _print_entries(sorted(tagdict), tagdict)
     elif tagpattern in tagdict:
         _print_entries([tagpattern], tagdict)
     else:
         tagpattern = re.compile(tagpattern)
-        tags = [tag for tag in sorted(tagdict) if tagpattern.match(tag)]
-        if tags:
+        if tags := [tag for tag in sorted(tagdict) if tagpattern.match(tag)]:
             _print_entries(tags, tagdict)
         else:
             print("No matching tags found.")

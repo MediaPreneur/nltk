@@ -18,6 +18,7 @@ https://www.nltk.org/book/
 isort:skip_file
 """
 
+
 import os
 
 # //////////////////////////////////////////////////////
@@ -34,7 +35,7 @@ try:
 except NameError:
     __version__ = "unknown (running code interactively?)"
 except OSError as ex:
-    __version__ = "unknown (%s)" % ex
+    __version__ = f"unknown ({ex})"
 
 if __doc__ is not None:  # fix for the ``python -OO``
     __doc__ += "\n@version: " + __version__

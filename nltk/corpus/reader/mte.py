@@ -198,9 +198,9 @@ class MTETagConverter:
 
         Unknown Tags will be mapped to X. Punctuation marks are not supported in MSD tags, so
         """
-        indicator = tag[0] if not tag[0] == "#" else tag[1]
+        indicator = tag[0] if tag[0] != "#" else tag[1]
 
-        if not indicator in MTETagConverter.mapping_msd_universal:
+        if indicator not in MTETagConverter.mapping_msd_universal:
             indicator = "-"
 
         return MTETagConverter.mapping_msd_universal[indicator]
@@ -307,7 +307,7 @@ class MTECorpusReader(TaggedCorpusReader):
                  encoded as tuples (word, tag)
         :rtype: list(tuple(str, str))
         """
-        if tagset == "universal" or tagset == "msd":
+        if tagset in ["universal", "msd"]:
             return concat(
                 [
                     MTEFileReader(os.path.join(self._root, f)).tagged_words(
@@ -345,7 +345,7 @@ class MTECorpusReader(TaggedCorpusReader):
                  each encoded as a list of (word,tag) tuples
         :rtype: list(list(tuple(str, str)))
         """
-        if tagset == "universal" or tagset == "msd":
+        if tagset in ["universal", "msd"]:
             return concat(
                 [
                     MTEFileReader(os.path.join(self._root, f)).tagged_sents(
@@ -384,7 +384,7 @@ class MTECorpusReader(TaggedCorpusReader):
                  of (word,tag) tuples
         :rtype: list(list(list(tuple(str, str))))
         """
-        if tagset == "universal" or tagset == "msd":
+        if tagset in ["universal", "msd"]:
             return concat(
                 [
                     MTEFileReader(os.path.join(self._root, f)).tagged_paras(

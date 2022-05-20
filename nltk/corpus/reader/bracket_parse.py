@@ -69,9 +69,10 @@ class BracketParseCorpusReader(SyntaxCorpusReader):
             # Strip any comments out of the tokens.
             if self._comment_char:
                 toks = [
-                    re.sub("(?m)^%s.*" % re.escape(self._comment_char), "", tok)
+                    re.sub(f"(?m)^{re.escape(self._comment_char)}.*", "", tok)
                     for tok in toks
                 ]
+
             return toks
         else:
             assert 0, "bad block type"
@@ -87,11 +88,7 @@ class BracketParseCorpusReader(SyntaxCorpusReader):
         try:
             tree = Tree.fromstring(self._normalize(t))
             # If there's an empty node at the top, strip it off
-            if tree.label() == "" and len(tree) == 1:
-                return tree[0]
-            else:
-                return tree
-
+            return tree[0] if tree.label() == "" and len(tree) == 1 else tree
         except ValueError as e:
             sys.stderr.write("Bad tree detected; trying to recover...\n")
             # Try to recover, if we can:

@@ -157,7 +157,7 @@ class IPIPANCorpusReader(CorpusReader):
         )
 
     def _list_morph_files(self, fileids):
-        return [f for f in self.abspaths(fileids)]
+        return list(self.abspaths(fileids))
 
     def _list_header_files(self, fileids):
         return [
@@ -192,18 +192,15 @@ class IPIPANCorpusReader(CorpusReader):
             header = infile.read()
         tag_end = 0
         while True:
-            tag_pos = header.find("<" + tag, tag_end)
+            tag_pos = header.find(f"<{tag}", tag_end)
             if tag_pos < 0:
                 return tags
-            tag_end = header.find("</" + tag + ">", tag_pos)
+            tag_end = header.find(f"</{tag}>", tag_pos)
             tags.append(header[tag_pos + len(tag) + 2 : tag_end])
 
     def _map_category(self, cat):
         pos = cat.find(">")
-        if pos == -1:
-            return cat
-        else:
-            return cat[pos + 1 :]
+        return cat if pos == -1 else cat[pos + 1 :]
 
     def _view(self, filename, **kwargs):
         tags = kwargs.pop("tags", True)
@@ -216,7 +213,7 @@ class IPIPANCorpusReader(CorpusReader):
         replace_xmlentities = kwargs.pop("replace_xmlentities", True)
 
         if len(kwargs) > 0:
-            raise ValueError("Unexpected arguments: %s" % kwargs.keys())
+            raise ValueError(f"Unexpected arguments: {kwargs.keys()}")
         if not one_tag and not disamb_only:
             raise ValueError(
                 "You cannot specify both one_tag=False and " "disamb_only=False"
@@ -336,8 +333,6 @@ class IPIPANCorpusView(StreamBackedCorpusView):
                         sentence.append(("", "no-space"))
                     else:
                         sentence.append("")
-            elif line.startswith("</cesAna"):
-                pass
 
     def _read_data(self, stream):
         self.position = stream.tell()

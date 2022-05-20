@@ -106,10 +106,7 @@ class GAAClusterer(VectorSpaceClusterer):
             else:
                 centroid = numpy.array(cluster[0])
             for vector in cluster[1:]:
-                if self._should_normalise:
-                    centroid += self._normalise(vector)
-                else:
-                    centroid += vector
+                centroid += self._normalise(vector) if self._should_normalise else vector
             centroid /= len(cluster)
             self._centroids.append(centroid)
         self._num_clusters = len(self._centroids)
@@ -161,7 +158,7 @@ def demo():
 
     # classify a new vector
     vector = numpy.array([3, 3])
-    print("classify(%s):" % vector, end=" ")
+    print(f"classify({vector}):", end=" ")
     print(clusterer.classify(vector))
     print()
 

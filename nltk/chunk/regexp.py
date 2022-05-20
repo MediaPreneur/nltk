@@ -231,7 +231,7 @@ class ChunkString:
 
         :rtype: str
         """
-        return "<ChunkString: %s>" % repr(self._str)
+        return f"<ChunkString: {repr(self._str)}>"
 
     def __str__(self):
         """
@@ -246,7 +246,7 @@ class ChunkString:
         str = re.sub(r">(?!\})", r"> ", self._str)
         str = re.sub(r"([^\{])<", r"\1 <", str)
         if str[0] == "<":
-            str = " " + str
+            str = f" {str}"
         return str
 
 
@@ -370,8 +370,8 @@ class RegexpChunkRule:
         """
         # Split off the comment (but don't split on '\#')
         m = re.match(r"(?P<rule>(\\.|[^#])*)(?P<comment>#.*)?", s)
-        rule = m.group("rule").strip()
-        comment = (m.group("comment") or "")[1:].strip()
+        rule = m["rule"].strip()
+        comment = (m["comment"] or "")[1:].strip()
 
         # Pattern bodies: chunk, strip, split, merge
         try:
@@ -391,9 +391,9 @@ class RegexpChunkRule:
                 left, chunk, right = re.split("[{}]", rule)
                 return ChunkRuleWithContext(left, chunk, right, comment)
             else:
-                raise ValueError("Illegal chunk pattern: %s" % rule)
+                raise ValueError(f"Illegal chunk pattern: {rule}")
         except (ValueError, re.error) as e:
-            raise ValueError("Illegal chunk pattern: %s" % rule) from e
+            raise ValueError(f"Illegal chunk pattern: {rule}") from e
 
 
 class ChunkRule(RegexpChunkRule):
@@ -420,9 +420,9 @@ class ChunkRule(RegexpChunkRule):
         """
         self._pattern = tag_pattern
         regexp = re.compile(
-            "(?P<chunk>%s)%s"
-            % (tag_pattern2re_pattern(tag_pattern), ChunkString.IN_STRIP_PATTERN)
+            f"(?P<chunk>{tag_pattern2re_pattern(tag_pattern)}){ChunkString.IN_STRIP_PATTERN}"
         )
+
         RegexpChunkRule.__init__(self, regexp, r"{\g<chunk>}", descr)
 
     def __repr__(self):
@@ -437,7 +437,7 @@ class ChunkRule(RegexpChunkRule):
 
         :rtype: str
         """
-        return "<ChunkRule: " + repr(self._pattern) + ">"
+        return f"<ChunkRule: {repr(self._pattern)}>"
 
 
 class StripRule(RegexpChunkRule):
@@ -465,9 +465,9 @@ class StripRule(RegexpChunkRule):
         """
         self._pattern = tag_pattern
         regexp = re.compile(
-            "(?P<strip>%s)%s"
-            % (tag_pattern2re_pattern(tag_pattern), ChunkString.IN_CHUNK_PATTERN)
+            f"(?P<strip>{tag_pattern2re_pattern(tag_pattern)}){ChunkString.IN_CHUNK_PATTERN}"
         )
+
         RegexpChunkRule.__init__(self, regexp, r"}\g<strip>{", descr)
 
     def __repr__(self):
@@ -482,7 +482,7 @@ class StripRule(RegexpChunkRule):
 
         :rtype: str
         """
-        return "<StripRule: " + repr(self._pattern) + ">"
+        return f"<StripRule: {repr(self._pattern)}>"
 
 
 class UnChunkRule(RegexpChunkRule):
@@ -522,7 +522,7 @@ class UnChunkRule(RegexpChunkRule):
 
         :rtype: str
         """
-        return "<UnChunkRule: " + repr(self._pattern) + ">"
+        return f"<UnChunkRule: {repr(self._pattern)}>"
 
 
 class MergeRule(RegexpChunkRule):
@@ -635,12 +635,9 @@ class SplitRule(RegexpChunkRule):
         self._left_tag_pattern = left_tag_pattern
         self._right_tag_pattern = right_tag_pattern
         regexp = re.compile(
-            "(?P<left>%s)(?=%s)"
-            % (
-                tag_pattern2re_pattern(left_tag_pattern),
-                tag_pattern2re_pattern(right_tag_pattern),
-            )
+            f"(?P<left>{tag_pattern2re_pattern(left_tag_pattern)})(?={tag_pattern2re_pattern(right_tag_pattern)})"
         )
+
         RegexpChunkRule.__init__(self, regexp, r"\g<left>}{", descr)
 
     def __repr__(self):
@@ -856,14 +853,9 @@ class ChunkRuleWithContext(RegexpChunkRule):
         self._chunk_tag_pattern = chunk_tag_pattern
         self._right_context_tag_pattern = right_context_tag_pattern
         regexp = re.compile(
-            "(?P<left>%s)(?P<chunk>%s)(?P<right>%s)%s"
-            % (
-                tag_pattern2re_pattern(left_context_tag_pattern),
-                tag_pattern2re_pattern(chunk_tag_pattern),
-                tag_pattern2re_pattern(right_context_tag_pattern),
-                ChunkString.IN_STRIP_PATTERN,
-            )
+            f"(?P<left>{tag_pattern2re_pattern(left_context_tag_pattern)})(?P<chunk>{tag_pattern2re_pattern(chunk_tag_pattern)})(?P<right>{tag_pattern2re_pattern(right_context_tag_pattern)}){ChunkString.IN_STRIP_PATTERN}"
         )
+
         replacement = r"\g<left>{\g<chunk>}\g<right>"
         RegexpChunkRule.__init__(self, regexp, replacement, descr)
 
@@ -1032,9 +1024,9 @@ class RegexpChunkParser(ChunkParserI):
         for rule in self._rules:
             rule.apply(chunkstr)
             if verbose:
-                print("#", rule.descr() + " (" + repr(rule) + "):")
+                print("#", f"{rule.descr()} ({repr(rule)}):")
             else:
-                print("#", rule.descr() + ":")
+                print("#", f"{rule.descr()}:")
             print(chunkstr)
 
     def _notrace_apply(self, chunkstr):
@@ -1119,7 +1111,7 @@ class RegexpChunkParser(ChunkParserI):
         for rule in self._rules:
             margin = max(margin, len(rule.descr()))
         if margin < 35:
-            format = "    %" + repr(-(margin + 3)) + "s%s\n"
+            format = f"    %{repr(-(margin + 3))}" + "s%s\n"
         else:
             format = "    %s\n      %s\n"
         for rule in self._rules:
@@ -1223,9 +1215,7 @@ class RegexpParser(ChunkParserI):
         for line in grammar.split("\n"):
             line = line.strip()
 
-            # New stage begins if there's an unescaped ':'
-            m = pattern.match(line)
-            if m:
+            if m := pattern.match(line):
                 # Record the stage that we just completed.
                 self._add_stage(rules, lhs, root_label, trace)
                 # Start a new stage.
@@ -1274,7 +1264,7 @@ class RegexpParser(ChunkParserI):
         """
         if trace is None:
             trace = self._trace
-        for i in range(self._loop):
+        for _ in range(self._loop):
             for parser in self._stages:
                 chunk_struct = parser.parse(chunk_struct, trace=trace)
         return chunk_struct

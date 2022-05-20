@@ -326,8 +326,7 @@ class FreqDist(Counter):
             kwargs, "samples", [item for item, _ in self.most_common(*args)]
         )
 
-        cumulative = _get_kwarg(kwargs, "cumulative", False)
-        if cumulative:
+        if cumulative := _get_kwarg(kwargs, "cumulative", False):
             freqs = list(self._cumulative_frequencies(samples))
         else:
             freqs = [self[sample] for sample in samples]
@@ -655,7 +654,7 @@ class RandomProbDist(ProbDistI):
         syntax to UniformProbDist
         """
         samples = set(samples)
-        randrow = [random.random() for i in range(len(samples))]
+        randrow = [random.random() for _ in range(len(samples))]
         total = sum(randrow)
         for i, x in enumerate(randrow):
             randrow[i] = x / total
@@ -741,13 +740,10 @@ class DictionaryProbDist(ProbDistI):
     def logprob(self, sample):
         if self._log:
             return self._prob_dict.get(sample, _NINF)
+        if sample not in self._prob_dict or self._prob_dict[sample] == 0:
+            return _NINF
         else:
-            if sample not in self._prob_dict:
-                return _NINF
-            elif self._prob_dict[sample] == 0:
-                return _NINF
-            else:
-                return math.log(self._prob_dict[sample], 2)
+            return math.log(self._prob_dict[sample], 2)
 
     def max(self):
         if not hasattr(self, "_max"):
@@ -846,8 +842,10 @@ class LidstoneProbDist(ProbDistI):
         if (bins == 0) or (bins is None and freqdist.N() == 0):
             name = self.__class__.__name__[:-8]
             raise ValueError(
-                "A %s probability distribution " % name + "must have at least one bin."
+                f"A {name} probability distribution "
+                + "must have at least one bin."
             )
+
         if (bins is not None) and (bins < freqdist.B()):
             name = self.__class__.__name__[:-8]
             raise ValueError(
@@ -1533,10 +1531,11 @@ class SimpleGoodTuringProbDist(ProbDistI):
         return p
 
     def _prob_measure(self, count):
-        if count == 0 and self._freqdist.N() == 0:
-            return 1.0
-        elif count == 0 and self._freqdist.N() != 0:
-            return self._freqdist.Nr(1) / self._freqdist.N()
+        if count == 0:
+            if self._freqdist.N() == 0:
+                return 1.0
+            elif self._freqdist.N() != 0:
+                return self._freqdist.Nr(1) / self._freqdist.N()
 
         if self._switch_at > count:
             Er_1 = self._freqdist.Nr(count + 1)
@@ -1550,7 +1549,7 @@ class SimpleGoodTuringProbDist(ProbDistI):
 
     def check(self):
         prob_sum = 0.0
-        for i in range(0, len(self._Nr)):
+        for i in range(len(self._Nr)):
             prob_sum += self._Nr[i] * self._prob_measure(i) / self._renormal
         print("Probability Sum:", prob_sum)
         # assert prob_sum != 1.0, "probability sum should be one!"
@@ -1714,10 +1713,7 @@ class KneserNeyProbDist(ProbDistI):
         :type discount: float (preferred, but can be set to int)
         """
 
-        if not bins:
-            self._bins = freqdist.B()
-        else:
-            self._bins = bins
+        self._bins = bins or freqdist.B()
         self._D = discount
 
         # cache for probability calculation
@@ -1746,32 +1742,31 @@ class KneserNeyProbDist(ProbDistI):
 
         if trigram in self._cache:
             return self._cache[trigram]
+        # if the sample trigram was seen during training
+        if trigram in self._trigrams:
+            prob = (self._trigrams[trigram] - self.discount()) / self._bigrams[
+                (w0, w1)
+            ]
+
+        # else if the 'rougher' environment was seen during training
+        elif (w0, w1) in self._bigrams and (w1, w2) in self._wordtypes_before:
+            aftr = self._wordtypes_after[(w0, w1)]
+            bfr = self._wordtypes_before[(w1, w2)]
+
+            # the probability left over from alphas
+            leftover_prob = (aftr * self.discount()) / self._bigrams[(w0, w1)]
+
+            # the beta (including normalization)
+            beta = bfr / (self._trigrams_contain[w1] - aftr)
+
+            prob = leftover_prob * beta
+
+        # else the sample was completely unseen during training
         else:
-            # if the sample trigram was seen during training
-            if trigram in self._trigrams:
-                prob = (self._trigrams[trigram] - self.discount()) / self._bigrams[
-                    (w0, w1)
-                ]
+            prob = 0.0
 
-            # else if the 'rougher' environment was seen during training
-            elif (w0, w1) in self._bigrams and (w1, w2) in self._wordtypes_before:
-                aftr = self._wordtypes_after[(w0, w1)]
-                bfr = self._wordtypes_before[(w1, w2)]
-
-                # the probability left over from alphas
-                leftover_prob = (aftr * self.discount()) / self._bigrams[(w0, w1)]
-
-                # the beta (including normalization)
-                beta = bfr / (self._trigrams_contain[w1] - aftr)
-
-                prob = leftover_prob * beta
-
-            # else the sample was completely unseen during training
-            else:
-                prob = 0.0
-
-            self._cache[trigram] = prob
-            return prob
+        self._cache[trigram] = prob
+        return prob
 
     def discount(self):
         """
@@ -1957,10 +1952,12 @@ class ConditionalFreqDist(defaultdict):
                 "See https://matplotlib.org/"
             ) from e
 
-        if not conditions:
-            conditions = self.conditions()
-        else:
-            conditions = [c for c in conditions if c in self]
+        conditions = (
+            [c for c in conditions if c in self]
+            if conditions
+            else self.conditions()
+        )
+
         if not samples:
             samples = sorted({v for c in conditions for v in self[c]})
         if "linewidth" not in kwargs:
@@ -1987,15 +1984,9 @@ class ConditionalFreqDist(defaultdict):
                 ylabel = ""
                 legend_loc = "upper right"
 
-            if percents:
-                ylabel += "Percents"
-            else:
-                ylabel += "Counts"
-
-            i = 0
-            for freq in freqs:
+            ylabel += "Percents" if percents else "Counts"
+            for i, freq in enumerate(freqs):
                 kwargs["label"] = conditions[i]  # label for each condition
-                i += 1
                 ax.plot(freq, *args, **kwargs)
             ax.legend(loc=legend_loc)
             ax.grid(True, color="silver")
@@ -2031,8 +2022,8 @@ class ConditionalFreqDist(defaultdict):
             sorted({v for c in conditions if c in self for v in self[c]}),
         )  # this computation could be wasted
 
-        width = max(len("%s" % s) for s in samples)
-        freqs = dict()
+        width = max(len(f"{s}") for s in samples)
+        freqs = {}
         for c in conditions:
             if cumulative:
                 freqs[c] = list(self[c]._cumulative_frequencies(samples))
@@ -2040,7 +2031,7 @@ class ConditionalFreqDist(defaultdict):
                 freqs[c] = [self[c][sample] for sample in samples]
             width = max(width, max(len("%d" % f) for f in freqs[c]))
 
-        condition_size = max(len("%s" % c) for c in conditions)
+        condition_size = max(len(f"{c}") for c in conditions)
         print(" " * condition_size, end=" ")
         for s in samples:
             print("%*s" % (width, s), end=" ")
@@ -2096,8 +2087,7 @@ class ConditionalFreqDist(defaultdict):
             return NotImplemented
         result = ConditionalFreqDist()
         for cond in self.conditions():
-            newfreqdist = self[cond] & other[cond]
-            if newfreqdist:
+            if newfreqdist := self[cond] & other[cond]:
                 result[cond] = newfreqdist
         return result
 
@@ -2402,10 +2392,10 @@ class ProbabilisticMixIn:
 
 class ImmutableProbabilisticMixIn(ProbabilisticMixIn):
     def set_prob(self, prob):
-        raise ValueError("%s is immutable" % self.__class__.__name__)
+        raise ValueError(f"{self.__class__.__name__} is immutable")
 
     def set_logprob(self, prob):
-        raise ValueError("%s is immutable" % self.__class__.__name__)
+        raise ValueError(f"{self.__class__.__name__} is immutable")
 
 
 ## Helper function for processing keyword arguments
@@ -2433,7 +2423,7 @@ def _create_rand_fdist(numsamples, numoutcomes):
     """
 
     fdist = FreqDist()
-    for x in range(numoutcomes):
+    for _ in range(numoutcomes):
         y = random.randint(1, (1 + numsamples) // 2) + random.randint(
             0, numsamples // 2
         )
@@ -2448,7 +2438,7 @@ def _create_sum_pdist(numsamples):
     """
     fdist = FreqDist()
     for x in range(1, (1 + numsamples) // 2 + 1):
-        for y in range(0, numsamples // 2 + 1):
+        for y in range(numsamples // 2 + 1):
             fdist[x + y] += 1
     return MLEProbDist(fdist)
 
@@ -2492,9 +2482,10 @@ def demo(numsamples=6, numoutcomes=500):
     ]
 
     # Find the probability of each sample.
-    vals = []
-    for n in range(1, numsamples + 1):
-        vals.append(tuple([n, fdist1.freq(n)] + [pdist.prob(n) for pdist in pdists]))
+    vals = [
+        tuple([n, fdist1.freq(n)] + [pdist.prob(n) for pdist in pdists])
+        for n in range(1, numsamples + 1)
+    ]
 
     # Print the results in a formatted table.
     print(
@@ -2518,16 +2509,16 @@ def demo(numsamples=6, numoutcomes=500):
     print("=" * 9 * (len(pdists) + 2))
 
     # Display the distributions themselves, if they're short enough.
-    if len("%s" % fdist1) < 70:
-        print("  fdist1: %s" % fdist1)
-        print("  fdist2: %s" % fdist2)
-        print("  fdist3: %s" % fdist3)
+    if len(f"{fdist1}") < 70:
+        print(f"  fdist1: {fdist1}")
+        print(f"  fdist2: {fdist2}")
+        print(f"  fdist3: {fdist3}")
     print()
 
     print("Generating:")
     for pdist in pdists:
-        fdist = FreqDist(pdist.generate() for i in range(5000))
-        print("{:>20} {}".format(pdist.__class__.__name__[:20], ("%s" % fdist)[:55]))
+        fdist = FreqDist(pdist.generate() for _ in range(5000))
+        print("{:>20} {}".format(pdist.__class__.__name__[:20], f"{fdist}"[:55]))
     print()
 
 

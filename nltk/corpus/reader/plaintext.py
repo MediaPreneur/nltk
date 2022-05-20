@@ -113,7 +113,7 @@ class PlaintextCorpusReader(CorpusReader):
 
     def _read_word_block(self, stream):
         words = []
-        for i in range(20):  # Read 20 lines at a time.
+        for _ in range(20):
             words.extend(self._word_tokenizer.tokenize(stream.readline()))
         return words
 
@@ -129,15 +129,13 @@ class PlaintextCorpusReader(CorpusReader):
         return sents
 
     def _read_para_block(self, stream):
-        paras = []
-        for para in self._para_block_reader(stream):
-            paras.append(
-                [
-                    self._word_tokenizer.tokenize(sent)
-                    for sent in self._sent_tokenizer.tokenize(para)
-                ]
-            )
-        return paras
+        return [
+            [
+                self._word_tokenizer.tokenize(sent)
+                for sent in self._sent_tokenizer.tokenize(para)
+            ]
+            for para in self._para_block_reader(stream)
+        ]
 
 
 class CategorizedPlaintextCorpusReader(CategorizedCorpusReader, PlaintextCorpusReader):
@@ -191,7 +189,7 @@ class EuroparlCorpusReader(PlaintextCorpusReader):
 
     def _read_word_block(self, stream):
         words = []
-        for i in range(20):  # Read 20 lines at a time.
+        for _ in range(20):
             words.extend(stream.readline().split())
         return words
 
@@ -202,10 +200,10 @@ class EuroparlCorpusReader(PlaintextCorpusReader):
         return sents
 
     def _read_para_block(self, stream):
-        paras = []
-        for para in self._para_block_reader(stream):
-            paras.append([sent.split() for sent in para.splitlines()])
-        return paras
+        return [
+            [sent.split() for sent in para.splitlines()]
+            for para in self._para_block_reader(stream)
+        ]
 
     def chapters(self, fileids=None):
         """

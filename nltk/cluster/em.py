@@ -86,8 +86,9 @@ class EMClusterer(VectorSpaceClusterer):
         if not covariances:
             covariances = self._covariance_matrices = [
                 numpy.identity(dimensions, numpy.float64)
-                for i in range(self._num_clusters)
+                for _ in range(self._num_clusters)
             ]
+
 
         # do the E and M steps until the likelihood plateaus
         lastl = self._loglikelihood(vectors, priors, means, covariances)
@@ -149,7 +150,7 @@ class EMClusterer(VectorSpaceClusterer):
 
     def _gaussian(self, mean, cvm, x):
         m = len(mean)
-        assert cvm.shape == (m, m), "bad sized covariance matrix, %s" % str(cvm.shape)
+        assert cvm.shape == (m, m), f"bad sized covariance matrix, {str(cvm.shape)}"
         try:
             det = numpy.linalg.det(cvm)
             inv = numpy.linalg.inv(cvm)
@@ -166,14 +167,16 @@ class EMClusterer(VectorSpaceClusterer):
     def _loglikelihood(self, vectors, priors, means, covariances):
         llh = 0.0
         for vector in vectors:
-            p = 0
-            for j in range(len(priors)):
-                p += priors[j] * self._gaussian(means[j], covariances[j], vector)
+            p = sum(
+                priors[j] * self._gaussian(means[j], covariances[j], vector)
+                for j in range(len(priors))
+            )
+
             llh += numpy.log(p)
         return llh
 
     def __repr__(self):
-        return "<EMClusterer means=%s>" % list(self._means)
+        return f"<EMClusterer means={list(self._means)}>"
 
 
 def demo():
@@ -204,12 +207,12 @@ def demo():
 
     # classify a new vector
     vector = numpy.array([2, 2])
-    print("classify(%s):" % vector, end=" ")
+    print(f"classify({vector}):", end=" ")
     print(clusterer.classify(vector))
 
     # show the classification probabilities
     vector = numpy.array([2, 2])
-    print("classification_probdist(%s):" % vector)
+    print(f"classification_probdist({vector}):")
     pdist = clusterer.classification_probdist(vector)
     for sample in pdist.samples():
         print(f"{sample} => {pdist.prob(sample) * 100:.0f}%")

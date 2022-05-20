@@ -49,7 +49,7 @@ class JSONTaggedDecoder(json.JSONDecoder):
         if isinstance(obj, dict):
             obj = {key: cls.decode_obj(val) for (key, val) in obj.items()}
         elif isinstance(obj, list):
-            obj = list(cls.decode_obj(val) for val in obj)
+            obj = [cls.decode_obj(val) for val in obj]
         # Check if we have a tagged object.
         if not isinstance(obj, dict) or len(obj) != 1:
             return obj

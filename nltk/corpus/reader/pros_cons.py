@@ -117,13 +117,14 @@ class ProsConsCorpusReader(CategorizedCorpusReader, CorpusReader):
 
     def _read_sent_block(self, stream):
         sents = []
-        for i in range(20):  # Read 20 lines at a time.
+        for _ in range(20):
             line = stream.readline()
             if not line:
                 continue
-            sent = re.match(r"^(?!\n)\s*<(Pros|Cons)>(.*)</(?:Pros|Cons)>", line)
-            if sent:
-                sents.append(self._word_tokenizer.tokenize(sent.group(2).strip()))
+            if sent := re.match(
+                r"^(?!\n)\s*<(Pros|Cons)>(.*)</(?:Pros|Cons)>", line
+            ):
+                sents.append(self._word_tokenizer.tokenize(sent[2].strip()))
         return sents
 
     def _read_word_block(self, stream):

@@ -89,8 +89,7 @@ class NEChunkParserTagger(ClassifierBasedTagger):
             nextnextword = tokens[index + 2][0].lower()
             nextnextpos = tokens[index + 2][1].lower()
 
-        # 89.6
-        features = {
+        return {
             "bias": True,
             "shape": shape(word),
             "wordlen": len(word),
@@ -109,8 +108,6 @@ class NEChunkParserTagger(ClassifierBasedTagger):
             "shape+prevtag": f"{prevshape}+{prevtag}",
         }
 
-        return features
-
 
 class NEChunkParser(ChunkParserI):
     """
@@ -125,8 +122,7 @@ class NEChunkParser(ChunkParserI):
         Each token should be a pos-tagged word
         """
         tagged = self._tagger.tag(tokens)
-        tree = self._tagged_to_parse(tagged)
-        return tree
+        return self._tagged_to_parse(tagged)
 
     def _train(self, corpus):
         # Convert to tagged sequence
@@ -164,8 +160,7 @@ class NEChunkParser(ChunkParserI):
                     print("Warning -- empty chunk in sentence")
                     continue
                 toks.append((child[0], f"B-{child.label()}"))
-                for tok in child[1:]:
-                    toks.append((tok, f"I-{child.label()}"))
+                toks.extend((tok, f"I-{child.label()}") for tok in child[1:])
             else:
                 toks.append((child, "O"))
         return toks
@@ -188,10 +183,7 @@ def shape(word):
 
 
 def simplify_pos(s):
-    if s.startswith("V"):
-        return "V"
-    else:
-        return s.split("-")[0]
+    return "V" if s.startswith("V") else s.split("-")[0]
 
 
 def postag_tree(tree):

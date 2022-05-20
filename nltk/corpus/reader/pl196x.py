@@ -67,10 +67,12 @@ class TEICorpusView(StreamBackedCorpusView):
         for para_str in PARA.findall(block):
             para = []
             for sent_str in SENT.findall(para_str):
-                if not self._tagged:
-                    sent = WORD.findall(sent_str)
-                else:
-                    sent = list(map(self._parse_tag, TAGGEDWORD.findall(sent_str)))
+                sent = (
+                    list(map(self._parse_tag, TAGGEDWORD.findall(sent_str)))
+                    if self._tagged
+                    else WORD.findall(sent_str)
+                )
+
                 if self._group_by_sent:
                     para.append(sent)
                 else:
@@ -94,11 +96,7 @@ class Pl196xCorpusReader(CategorizedCorpusReader, XMLCorpusReader):
     head_len = 2770
 
     def __init__(self, *args, **kwargs):
-        if "textid_file" in kwargs:
-            self._textids = kwargs["textid_file"]
-        else:
-            self._textids = None
-
+        self._textids = kwargs["textid_file"] if "textid_file" in kwargs else None
         XMLCorpusReader.__init__(self, *args)
         CategorizedCorpusReader.__init__(self, kwargs)
 
@@ -114,9 +112,9 @@ class Pl196xCorpusReader(CategorizedCorpusReader, XMLCorpusReader):
                     file_id, text_ids = line.split(" ", 1)
                     if file_id not in self.fileids():
                         raise ValueError(
-                            "In text_id mapping file %s: %s not found"
-                            % (self._textids, file_id)
+                            f"In text_id mapping file {self._textids}: {file_id} not found"
                         )
+
                     for text_id in text_ids.split(self._delimiter):
                         self._add_textids(file_id, text_id)
 
@@ -152,9 +150,7 @@ class Pl196xCorpusReader(CategorizedCorpusReader, XMLCorpusReader):
             if isinstance(textids, str):
                 textids = [textids]
             files = sum((self._t2f[t] for t in textids), [])
-            tdict = dict()
-            for f in files:
-                tdict[f] = set(self._f2t[f]) & set(textids)
+            tdict = {f: set(self._f2t[f]) & set(textids) for f in files}
             return files, tdict
 
     def decode_tag(self, tag):

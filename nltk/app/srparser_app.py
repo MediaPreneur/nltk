@@ -172,15 +172,13 @@ class ShiftReduceApp:
 
         self._productions = list(self._parser.grammar().productions())
         for production in self._productions:
-            self._prodlist.insert("end", (" %s" % production))
+            self._prodlist.insert("end", f" {production}")
         self._prodlist.config(height=min(len(self._productions), 25))
 
-        # Add a scrollbar if there are more than 25 productions.
-        if 1:  # len(self._productions) > 25:
-            listscroll = Scrollbar(self._prodframe, orient="vertical")
-            self._prodlist.config(yscrollcommand=listscroll.set)
-            listscroll.config(command=self._prodlist.yview)
-            listscroll.pack(side="left", fill="y")
+        listscroll = Scrollbar(self._prodframe, orient="vertical")
+        self._prodlist.config(yscrollcommand=listscroll.set)
+        listscroll.config(command=self._prodlist.yview)
+        listscroll.pack(side="left", fill="y")
 
         # If they select a production, apply it.
         self._prodlist.bind("<<ListboxSelect>>", self._prodlist_select)
@@ -569,11 +567,11 @@ class ShiftReduceApp:
             return True
         else:
             if list(self._parser.parses()):
-                self._lastoper1["text"] = "Finished:"
                 self._lastoper2["text"] = "Success"
             else:
-                self._lastoper1["text"] = "Finished:"
                 self._lastoper2["text"] = "Failure"
+
+            self._lastoper1["text"] = "Finished:"
 
     def shift(self, *e):
         if self._animating_lock:
@@ -595,7 +593,7 @@ class ShiftReduceApp:
         production = self._parser.reduce()
         if production:
             self._lastoper1["text"] = "Reduce:"
-            self._lastoper2["text"] = "%s" % production
+            self._lastoper2["text"] = f"{production}"
             if self._animate.get():
                 self._animate_reduce()
             else:
@@ -679,7 +677,7 @@ class ShiftReduceApp:
         self._productions = list(grammar.productions())
         self._prodlist.delete(0, "end")
         for production in self._productions:
-            self._prodlist.insert("end", (" %s" % production))
+            self._prodlist.insert("end", f" {production}")
 
     def edit_sentence(self, *e):
         sentence = " ".join(self._sent)
@@ -711,10 +709,9 @@ class ShiftReduceApp:
         if len(selection) != 1:
             return
         index = int(selection[0])
-        production = self._parser.reduce(self._productions[index])
-        if production:
+        if production := self._parser.reduce(self._productions[index]):
             self._lastoper1["text"] = "Reduce:"
-            self._lastoper2["text"] = "%s" % production
+            self._lastoper2["text"] = f"{production}"
             if self._animate.get():
                 self._animate_reduce()
             else:
@@ -811,10 +808,7 @@ class ShiftReduceApp:
             widget = TreeSegmentWidget(self._canvas, label, widgets, width=2)
             (x1, y1, x2, y2) = self._stacklabel.bbox()
             y = y2 - y1 + 10
-            if not self._stackwidgets:
-                x = 5
-            else:
-                x = self._stackwidgets[-1].bbox()[2] + 10
+            x = self._stackwidgets[-1].bbox()[2] + 10 if self._stackwidgets else 5
             self._cframe.add_widget(widget, x, y)
             self._stackwidgets.append(widget)
 

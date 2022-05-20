@@ -35,7 +35,7 @@ def __legacysignature(signature):
     listsignature = str(signature)[1:-1].split(",")
     for counter, param in enumerate(listsignature):
         if param.count("=") > 0:
-            listsignature[counter] = param[0 : param.index("=")].strip()
+            listsignature[counter] = param[:param.index("=")].strip()
         else:
             listsignature[counter] = param.strip()
     return ", ".join(listsignature)
@@ -125,13 +125,11 @@ def new_wrapper(wrapper, model):
     Moreovoer, 'model' can be a dictionary with keys 'name', 'doc', 'module',
     'dict', 'defaults'.
     """
-    if isinstance(model, dict):
-        infodict = model
-    else:  # assume model is a function
-        infodict = getinfo(model)
+    infodict = model if isinstance(model, dict) else getinfo(model)
     assert (
-        not "_wrapper_" in infodict["argnames"]
+        "_wrapper_" not in infodict["argnames"]
     ), '"_wrapper_" is a reserved argument name!'
+
     src = "lambda %(signature)s: _wrapper_(%(signature)s)" % infodict
     funcopy = eval(src, dict(_wrapper_=wrapper))
     return update_wrapper(funcopy, model, infodict)

@@ -55,7 +55,7 @@ class Chat:
     def _compile_reflections(self):
         sorted_refl = sorted(self._reflections, key=len, reverse=True)
         return re.compile(
-            r"\b({})\b".format("|".join(map(re.escape, sorted_refl))), re.IGNORECASE
+            f'\\b({"|".join(map(re.escape, sorted_refl))})\\b', re.IGNORECASE
         )
 
     def _substitute(self, str):
@@ -95,18 +95,15 @@ class Chat:
 
         # check each pattern
         for (pattern, response) in self._pairs:
-            match = pattern.match(str)
-
-            # did the pattern match?
-            if match:
+            if match := pattern.match(str):
                 resp = random.choice(response)  # pick a random response
                 resp = self._wildcards(resp, match)  # process wildcards
 
                 # fix munged punctuation at the end
                 if resp[-2:] == "?.":
-                    resp = resp[:-2] + "."
+                    resp = f"{resp[:-2]}."
                 if resp[-2:] == "??":
-                    resp = resp[:-2] + "?"
+                    resp = f"{resp[:-2]}?"
                 return resp
 
     # Hold a conversation with a chatbot

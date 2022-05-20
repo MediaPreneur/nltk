@@ -105,14 +105,12 @@ class TextCat:
             idx_text = list(text_profile.keys()).index(trigram)
 
             # print(idx_lang_profile, ", ", idx_text)
-            dist = abs(idx_lang_profile - idx_text)
+            return abs(idx_lang_profile - idx_text)
         else:
             # Arbitrary but should be larger than
             # any possible trigram file length
             # in terms of total lines
-            dist = maxsize
-
-        return dist
+            return maxsize
 
     def lang_dists(self, text):
         """Calculate the "out-of-place" measure between
@@ -124,10 +122,7 @@ class TextCat:
         for lang in self._corpus._all_lang_freq.keys():
             # Calculate distance metric for every trigram in
             # input text to be identified
-            lang_dist = 0
-            for trigram in profile:
-                lang_dist += self.calc_dist(lang, trigram, profile)
-
+            lang_dist = sum(self.calc_dist(lang, trigram, profile) for trigram in profile)
             distances[lang] = lang_dist
 
         return distances
@@ -179,15 +174,12 @@ def demo():
         sample = ""
 
         # Generate a sample text of the language
-        for i in range(0, rows):
-            cur_sent = ""
-            for j in range(0, cols[i]):
-                cur_sent += " " + raw_sentences[i][j]
-
+        for i in range(rows):
+            cur_sent = "".join(f" {raw_sentences[i][j]}" for j in range(cols[i]))
             sample += cur_sent
 
         # Try to detect what it is
-        print("Language snippet: " + sample[0:140] + "...")
+        print("Language snippet: " + sample[:140] + "...")
         guess = tc.guess_language(sample)
         print(f"Language detection: {guess} ({friendly[guess]})")
         print("#" * 140)

@@ -189,10 +189,7 @@ class BNCWordView(XMLCorpusView):
         :param strip_space: If true, strip spaces from word tokens.
         :param stem: If true, then substitute stems for words.
         """
-        if sent:
-            tagspec = ".*/s"
-        else:
-            tagspec = ".*/s/(.*/)?(c|w)"
+        tagspec = ".*/s" if sent else ".*/s/(.*/)?(c|w)"
         self._sent = sent
         self._tag = tag
         self._strip_space = strip_space
@@ -214,30 +211,22 @@ class BNCWordView(XMLCorpusView):
         self._tag_context = {0: ()}
 
     def handle_header(self, elt, context):
-        # Set up some metadata!
-        titles = elt.findall("titleStmt/title")
-        if titles:
+        if titles := elt.findall("titleStmt/title"):
             self.title = "\n".join(title.text.strip() for title in titles)
 
-        authors = elt.findall("titleStmt/author")
-        if authors:
+        if authors := elt.findall("titleStmt/author"):
             self.author = "\n".join(author.text.strip() for author in authors)
 
-        editors = elt.findall("titleStmt/editor")
-        if editors:
+        if editors := elt.findall("titleStmt/editor"):
             self.editor = "\n".join(editor.text.strip() for editor in editors)
 
-        resps = elt.findall("titleStmt/respStmt")
-        if resps:
+        if resps := elt.findall("titleStmt/respStmt"):
             self.resps = "\n\n".join(
                 "\n".join(resp_elt.text.strip() for resp_elt in resp) for resp in resps
             )
 
     def handle_elt(self, elt, context):
-        if self._sent:
-            return self.handle_sent(elt)
-        else:
-            return self.handle_word(elt)
+        return self.handle_sent(elt) if self._sent else self.handle_word(elt)
 
     def handle_word(self, elt):
         word = elt.text
@@ -261,5 +250,5 @@ class BNCWordView(XMLCorpusView):
             elif child.tag in ("w", "c"):
                 sent.append(self.handle_word(child))
             elif child.tag not in self.tags_to_ignore:
-                raise ValueError("Unexpected element %s" % child.tag)
+                raise ValueError(f"Unexpected element {child.tag}")
         return BNCSentence(elt.attrib["n"], sent)

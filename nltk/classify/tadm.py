@@ -65,9 +65,7 @@ def parse_tadm_weights(paramfile):
     model, return a ``numpy`` array containing the corresponding weight
     vector.
     """
-    weights = []
-    for line in paramfile:
-        weights.append(float(line.strip()))
+    weights = [float(line.strip()) for line in paramfile]
     return numpy.array(weights, "d")
 
 

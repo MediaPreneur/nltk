@@ -87,12 +87,11 @@ class ProductionList(ColorizedList):
         )
 
     def _item_repr(self, item):
-        contents = []
-        contents.append(("%s\t" % item.lhs(), "nonterminal"))
+        contents = [("%s\t" % item.lhs(), "nonterminal")]
         contents.append((self.ARROW, "arrow"))
         for elt in item.rhs():
             if isinstance(elt, Nonterminal):
-                contents.append((" %s" % elt.symbol(), "nonterminal"))
+                contents.append((f" {elt.symbol()}", "nonterminal"))
             else:
                 contents.append((" %r" % elt, "terminal"))
         return contents
@@ -174,10 +173,7 @@ class CFGEditor:
 
     def __init__(self, parent, cfg=None, set_cfg_callback=None):
         self._parent = parent
-        if cfg is not None:
-            self._cfg = cfg
-        else:
-            self._cfg = CFG(Nonterminal("S"), [])
+        self._cfg = cfg if cfg is not None else CFG(Nonterminal("S"), [])
         self._set_cfg_callback = set_cfg_callback
 
         self._highlight_matching_nonterminals = 1
@@ -365,16 +361,16 @@ class CFGEditor:
             arrow = self._textwidget.search("->", arrow, "end+1char")
             if arrow == "":
                 break
-            self._textwidget.delete(arrow, arrow + "+2char")
+            self._textwidget.delete(arrow, f"{arrow}+2char")
             self._textwidget.insert(arrow, self.ARROW, "arrow")
             self._textwidget.insert(arrow, "\t")
 
         arrow = "1.0"
         while True:
-            arrow = self._textwidget.search(self.ARROW, arrow + "+1char", "end+1char")
+            arrow = self._textwidget.search(self.ARROW, f"{arrow}+1char", "end+1char")
             if arrow == "":
                 break
-            self._textwidget.tag_add("arrow", arrow, arrow + "+1char")
+            self._textwidget.tag_add("arrow", arrow, f"{arrow}+1char")
 
     def _analyze_token(self, match, linenum):
         """
@@ -392,7 +388,7 @@ class CFGEditor:
             # If it's a nonterminal, then set up new bindings, so we
             # can highlight all instances of that nonterminal when we
             # put the mouse over it.
-            tag = "nonterminal_" + match.group()
+            tag = f"nonterminal_{match.group()}"
             if tag not in self._textwidget.tag_names():
                 self._init_nonterminal_tag(tag)
 
@@ -638,9 +634,9 @@ class CFGDemo:
         rootnode = TextWidget(c, start, font=node_font, draggable=1)
 
         # The leaves of the tree.
-        leaves = []
-        for word in self._text:
-            leaves.append(TextWidget(c, word, font=leaf_font, draggable=1))
+        leaves = [
+            TextWidget(c, word, font=leaf_font, draggable=1) for word in self._text
+        ]
 
         # Put it all together into one tree
         self._tree = TreeSegmentWidget(c, rootnode, leaves, color="white")
@@ -674,12 +670,10 @@ class CFGDemo:
                 ):
                     pass  # matching nonterminal
                 elif (
-                    isinstance(node, str)
-                    and isinstance(widget, TextWidget)
-                    and node == widget.text()
+                    not isinstance(node, str)
+                    or not isinstance(widget, TextWidget)
+                    or node != widget.text()
                 ):
-                    pass  # matching nonterminal
-                else:
                     break
             else:
                 # Everything matched!
@@ -698,7 +692,7 @@ class CFGDemo:
 
         # Convert the production to a tree.
         rhs = production.rhs()
-        for (i, elt) in enumerate(rhs):
+        for elt in rhs:
             if isinstance(elt, Nonterminal):
                 elt = Tree(elt)
         tree = Tree(production.lhs().symbol(), *rhs)

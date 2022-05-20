@@ -241,7 +241,7 @@ def normalize_resource_name(resource_name, allow_relative=True, relative_path=No
         resource_name = os.path.abspath(os.path.join(relative_path, resource_name))
     resource_name = resource_name.replace("\\", "/").replace(os.path.sep, "/")
     if sys.platform.startswith("win") and os.path.isabs(resource_name):
-        resource_name = "/" + resource_name
+        resource_name = f"/{resource_name}"
     if is_dir and not resource_name.endswith("/"):
         resource_name += "/"
     return resource_name
@@ -406,11 +406,9 @@ class ZipFilePathPointer(PathPointer):
                 # the zip file.  So if `entry` is a directory name,
                 # then check if the zipfile contains any files that
                 # are under the given directory.
-                if entry.endswith("/") and [
+                if not entry.endswith("/") or not [
                     n for n in zipfile.namelist() if n.startswith(entry)
                 ]:
-                    pass  # zipfile contains a file in that directory.
-                else:
                     # Otherwise, complain.
                     raise OSError(
                         f"Zipfile {zipfile.filename!r} does not contain {entry!r}"
@@ -550,7 +548,7 @@ def find(resource_name, paths=None):
     if zipfile is None:
         pieces = resource_name.split("/")
         for i in range(len(pieces)):
-            modified_name = "/".join(pieces[:i] + [pieces[i] + ".zip"] + pieces[i:])
+            modified_name = "/".join(pieces[:i] + [f"{pieces[i]}.zip"] + pieces[i:])
             try:
                 return find(modified_name, paths)
             except LookupError:
@@ -561,14 +559,10 @@ def find(resource_name, paths=None):
     if resource_zipname.endswith(".zip"):
         resource_zipname = resource_zipname.rpartition(".")[0]
     # Display a friendly error message if the resource wasn't found:
-    msg = str(
-        "Resource \33[93m{resource}\033[0m not found.\n"
-        "Please use the NLTK Downloader to obtain the resource:\n\n"
-        "\33[31m"  # To display red text in terminal.
-        ">>> import nltk\n"
-        ">>> nltk.download('{resource}')\n"
-        "\033[0m"
-    ).format(resource=resource_zipname)
+    msg = "Resource \x1b[93m{resource}\x1b[0m not found.\nPlease use the NLTK Downloader to obtain the resource:\n\n\x1b[31m>>> import nltk\n>>> nltk.download('{resource}')\n\x1b[0m".format(
+        resource=resource_zipname
+    )
+
     msg = textwrap_indent(msg)
 
     msg += "\n  For more information see: https://www.nltk.org/data.html\n"
@@ -759,9 +753,7 @@ def load(
         from nltk.jsontags import json_tags
 
         resource_val = json.load(opened_resource)
-        tag = None
-        if len(resource_val) != 1:
-            tag = next(resource_val.keys())
+        tag = next(resource_val.keys()) if len(resource_val) != 1 else None
         if tag not in json_tags:
             raise ValueError("Unknown json tag.")
     elif format == "yaml":
@@ -1142,8 +1134,7 @@ class SeekableUnicodeStreamReader:
 
     def next(self):
         """Return the next decoded line from the underlying stream."""
-        line = self.readline()
-        if line:
+        if line := self.readline():
             return line
         else:
             raise StopIteration
@@ -1334,10 +1325,7 @@ class SeekableUnicodeStreamReader:
             self.stream.read(self._bom)
 
         # Read the requested number of bytes.
-        if size is None:
-            new_bytes = self.stream.read()
-        else:
-            new_bytes = self.stream.read(size)
+        new_bytes = self.stream.read() if size is None else self.stream.read(size)
         bytes = self.bytebuffer + new_bytes
 
         # Decode the bytes into unicode characters
@@ -1402,10 +1390,7 @@ class SeekableUnicodeStreamReader:
         # Normalize our encoding name
         enc = re.sub("[ -]", "", self.encoding.lower())
 
-        # Look up our encoding in the BOM table.
-        bom_info = self._BOM_TABLE.get(enc)
-
-        if bom_info:
+        if bom_info := self._BOM_TABLE.get(enc):
             # Read a prefix, to check against the BOM(s)
             bytes = self.stream.read(16)
             self.stream.seek(0)

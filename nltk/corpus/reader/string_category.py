@@ -49,8 +49,7 @@ class StringCategoryCorpusReader(CorpusReader):
         )
 
     def _read_tuple_block(self, stream):
-        line = stream.readline().strip()
-        if line:
+        if line := stream.readline().strip():
             return [tuple(line.split(self._delimiter, 1))]
         else:
             return []

@@ -73,7 +73,7 @@ class CrubadanCorpusReader(CorpusReader):
 
         mapper_file = path.join(self.root, self._LANG_MAPPER_FILE)
         if self._LANG_MAPPER_FILE not in self.fileids():
-            raise RuntimeError("Could not find language mapper file: " + mapper_file)
+            raise RuntimeError(f"Could not find language mapper file: {mapper_file}")
 
         with open(mapper_file, encoding="utf-8") as raw:
             strip_raw = raw.read().strip()
@@ -88,7 +88,7 @@ class CrubadanCorpusReader(CorpusReader):
             raise RuntimeError("Unsupported language.")
 
         crubadan_code = self.iso_to_crubadan(lang)
-        ngram_file = path.join(self.root, crubadan_code + "-3grams.txt")
+        ngram_file = path.join(self.root, f"{crubadan_code}-3grams.txt")
 
         if not path.isfile(ngram_file):
             raise RuntimeError("No N-gram file found for requested language.")

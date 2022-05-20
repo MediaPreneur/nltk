@@ -127,7 +127,7 @@ class TwitterCorpusReader(CorpusReader):
         Assumes that each line in ``stream`` is a JSON-serialised object.
         """
         tweets = []
-        for i in range(10):
+        for _ in range(10):
             line = stream.readline()
             if not line:
                 return tweets

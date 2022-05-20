@@ -166,7 +166,7 @@ class BinaryCombinatorRule(AbstractChartRule):
     # Apply a combinator
     def apply(self, chart, grammar, left_edge, right_edge):
         # The left & right edges must be touching.
-        if not (left_edge.end() == right_edge.start()):
+        if left_edge.end() != right_edge.start():
             return
 
         # Check if the two edges are permitted to combine.
@@ -183,7 +183,7 @@ class BinaryCombinatorRule(AbstractChartRule):
 
     # The representation of the combinator (for printing derivations)
     def __str__(self):
-        return "%s" % self._combinator
+        return f"{self._combinator}"
 
 
 # Type-raising must be handled slightly differently to the other rules, as the
@@ -201,7 +201,7 @@ class ForwardTypeRaiseRule(AbstractChartRule):
         self._combinator = ForwardT
 
     def apply(self, chart, grammar, left_edge, right_edge):
-        if not (left_edge.end() == right_edge.start()):
+        if left_edge.end() != right_edge.start():
             return
 
         for res in self._combinator.combine(left_edge.categ(), right_edge.categ()):
@@ -210,7 +210,7 @@ class ForwardTypeRaiseRule(AbstractChartRule):
                 yield new_edge
 
     def __str__(self):
-        return "%s" % self._combinator
+        return f"{self._combinator}"
 
 
 class BackwardTypeRaiseRule(AbstractChartRule):
@@ -224,7 +224,7 @@ class BackwardTypeRaiseRule(AbstractChartRule):
         self._combinator = BackwardT
 
     def apply(self, chart, grammar, left_edge, right_edge):
-        if not (left_edge.end() == right_edge.start()):
+        if left_edge.end() != right_edge.start():
             return
 
         for res in self._combinator.combine(left_edge.categ(), right_edge.categ()):
@@ -233,7 +233,7 @@ class BackwardTypeRaiseRule(AbstractChartRule):
                 yield new_edge
 
     def __str__(self):
-        return "%s" % self._combinator
+        return f"{self._combinator}"
 
 
 # Common sets of combinators used for English derivations.
@@ -286,7 +286,7 @@ class CCGChartParser(ParserI):
 
         # Select a span for the new edges
         for span in range(2, chart.num_leaves() + 1):
-            for start in range(0, chart.num_leaves() - span + 1):
+            for start in range(chart.num_leaves() - span + 1):
                 # Try all possible pairs of edges that could generate
                 # an edge for that span
                 for part in range(1, span):
@@ -298,10 +298,7 @@ class CCGChartParser(ParserI):
                         for right in chart.select(span=(mid, rend)):
                             # Generate all possible combinations of the two edges
                             for rule in self._rules:
-                                edges_added_by_rule = 0
-                                for newedge in rule.apply(chart, lex, left, right):
-                                    edges_added_by_rule += 1
-
+                                edges_added_by_rule = sum(1 for _ in rule.apply(chart, lex, left, right))
         # Output the resulting parses
         return chart.parses(lex.start())
 
@@ -349,24 +346,23 @@ def compute_semantics(children, edge):
     if children[0].label()[0].semantics() is None:
         return None
 
-    if len(children) == 2:
-        if isinstance(edge.rule(), BackwardCombinator):
-            children = [children[1], children[0]]
-
-        combinator = edge.rule()._combinator
-        function = children[0].label()[0].semantics()
-        argument = children[1].label()[0].semantics()
-
-        if isinstance(combinator, UndirectedFunctionApplication):
-            return compute_function_semantics(function, argument)
-        elif isinstance(combinator, UndirectedComposition):
-            return compute_composition_semantics(function, argument)
-        elif isinstance(combinator, UndirectedSubstitution):
-            return compute_substitution_semantics(function, argument)
-        else:
-            raise AssertionError("Unsupported combinator '" + combinator + "'")
-    else:
+    if len(children) != 2:
         return compute_type_raised_semantics(children[0].label()[0].semantics())
+    if isinstance(edge.rule(), BackwardCombinator):
+        children = [children[1], children[0]]
+
+    combinator = edge.rule()._combinator
+    function = children[0].label()[0].semantics()
+    argument = children[1].label()[0].semantics()
+
+    if isinstance(combinator, UndirectedFunctionApplication):
+        return compute_function_semantics(function, argument)
+    elif isinstance(combinator, UndirectedComposition):
+        return compute_composition_semantics(function, argument)
+    elif isinstance(combinator, UndirectedSubstitution):
+        return compute_substitution_semantics(function, argument)
+    else:
+        raise AssertionError("Unsupported combinator '" + combinator + "'")
 
 
 # --------
@@ -381,7 +377,7 @@ def printCCGDerivation(tree):
     # Construct a string with both the leaf word and corresponding
     # category aligned.
     for (leaf, cat) in leafcats:
-        str_cat = "%s" % cat
+        str_cat = f"{cat}"
         nextlen = 2 + max(len(leaf), len(str_cat))
         lcatlen = (nextlen - len(str_cat)) // 2
         rcatlen = lcatlen + (nextlen - len(str_cat)) % 2
@@ -413,8 +409,11 @@ def printCCGTree(lwidth, tree):
     # Don't print anything, but account for the space occupied.
     if not isinstance(tree.label(), tuple):
         return max(
-            rwidth, 2 + lwidth + len("%s" % tree.label()), 2 + lwidth + len(tree[0])
+            rwidth,
+            2 + lwidth + len(f"{tree.label()}"),
+            2 + lwidth + len(tree[0]),
         )
+
 
     (token, op) = tree.label()
 
@@ -423,9 +422,9 @@ def printCCGTree(lwidth, tree):
 
     # Pad to the left with spaces, followed by a sequence of '-'
     # and the derivation rule.
-    print(lwidth * " " + (rwidth - lwidth) * "-" + "%s" % op)
+    print(lwidth * " " + (rwidth - lwidth) * "-" + f"{op}")
     # Print the resulting category on a new line.
-    str_res = "%s" % (token.categ())
+    str_res = f"{token.categ()}"
     if token.semantics() is not None:
         str_res += " {" + str(token.semantics()) + "}"
     respadlen = (rwidth - lwidth - len(str_res)) // 2 + lwidth

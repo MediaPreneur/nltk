@@ -55,17 +55,15 @@ class Senna(TaggerI):
         # Verifies the existence of the executable on the self._path first
         # senna_binary_file_1 = self.executable(self._path)
         exe_file_1 = self.executable(self._path)
-        if not path.isfile(exe_file_1):
-            # Check for the system environment
-            if "SENNA" in environ:
-                # self._path = path.join(environ['SENNA'],'')
-                self._path = path.normpath(environ["SENNA"]) + sep
-                exe_file_2 = self.executable(self._path)
-                if not path.isfile(exe_file_2):
-                    raise OSError(
-                        "Senna executable expected at %s or %s but not found"
-                        % (exe_file_1, exe_file_2)
-                    )
+        if not path.isfile(exe_file_1) and "SENNA" in environ:
+            # self._path = path.join(environ['SENNA'],'')
+            self._path = path.normpath(environ["SENNA"]) + sep
+            exe_file_2 = self.executable(self._path)
+            if not path.isfile(exe_file_2):
+                raise OSError(
+                    f"Senna executable expected at {exe_file_1} or {exe_file_2} but not found"
+                )
+
 
         self.operations = operations
 
@@ -116,9 +114,9 @@ class Senna(TaggerI):
 
         if not path.isfile(self.executable(self._path)):
             raise OSError(
-                "Senna executable expected at %s but not found"
-                % self.executable(self._path)
+                f"Senna executable expected at {self.executable(self._path)} but not found"
             )
+
 
         # Build the senna command to run the tagger
         _senna_cmd = [
@@ -128,7 +126,7 @@ class Senna(TaggerI):
             "-usrtokens",
             "-iobtags",
         ]
-        _senna_cmd.extend(["-" + op for op in self.operations])
+        _senna_cmd.extend([f"-{op}" for op in self.operations])
 
         # Serialize the actual sentences to a temporary string
         _input = "\n".join(" ".join(x) for x in sentences) + "\n"
@@ -142,7 +140,7 @@ class Senna(TaggerI):
 
         # Check the return code.
         if p.returncode != 0:
-            raise RuntimeError("Senna command failed! Details: %s" % stderr)
+            raise RuntimeError(f"Senna command failed! Details: {stderr}")
 
         if encoding:
             senna_output = stdout.decode(encoding)
@@ -159,9 +157,7 @@ class Senna(TaggerI):
                 token_index = 0
                 continue
             tags = tagged_word.split("\t")
-            result = {}
-            for tag in map_:
-                result[tag] = tags[map_[tag]].strip()
+            result = {tag: tags[map_[tag]].strip() for tag in map_}
             try:
                 result["word"] = sentences[sentence_index][token_index]
             except IndexError as e:

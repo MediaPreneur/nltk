@@ -89,8 +89,7 @@ def log_likelihood(classifier, gold):
 
 def accuracy(classifier, gold):
     results = classifier.classify_many([fs for (fs, l) in gold])
-    correct = [l == r for ((fs, l), r) in zip(gold, results)]
-    if correct:
+    if correct := [l == r for ((fs, l), r) in zip(gold, results)]:
         return sum(correct) / len(correct)
     else:
         return 0
@@ -157,26 +156,22 @@ class CutoffChecker:
 
 
 def names_demo_features(name):
-    features = {}
-    features["alwayson"] = True
-    features["startswith"] = name[0].lower()
+    features = {"alwayson": True, "startswith": name[0].lower()}
     features["endswith"] = name[-1].lower()
     for letter in "abcdefghijklmnopqrstuvwxyz":
-        features["count(%s)" % letter] = name.lower().count(letter)
-        features["has(%s)" % letter] = letter in name.lower()
+        features[f"count({letter})"] = name.lower().count(letter)
+        features[f"has({letter})"] = letter in name.lower()
     return features
 
 
 def binary_names_demo_features(name):
-    features = {}
-    features["alwayson"] = True
-    features["startswith(vowel)"] = name[0].lower() in "aeiouy"
+    features = {"alwayson": True, "startswith(vowel)": name[0].lower() in "aeiouy"}
     features["endswith(vowel)"] = name[-1].lower() in "aeiouy"
     for letter in "abcdefghijklmnopqrstuvwxyz":
-        features["count(%s)" % letter] = name.lower().count(letter)
-        features["has(%s)" % letter] = letter in name.lower()
-        features["startswith(%s)" % letter] = letter == name[0].lower()
-        features["endswith(%s)" % letter] = letter == name[-1].lower()
+        features[f"count({letter})"] = name.lower().count(letter)
+        features[f"has({letter})"] = letter in name.lower()
+        features[f"startswith({letter})"] = letter == name[0].lower()
+        features[f"endswith({letter})"] = letter == name[-1].lower()
     return features
 
 
@@ -271,10 +266,7 @@ def partial_names_demo(trainer, features=names_demo_features):
         print()
         print("Unseen Names      P(Male)  P(Female)\n" + "-" * 40)
         for ((name, is_male), pdist) in zip(test, pdists)[:5]:
-            if is_male == True:
-                fmt = "  %-15s *%6.4f   %6.4f"
-            else:
-                fmt = "  %-15s  %6.4f  *%6.4f"
+            fmt = "  %-15s *%6.4f   %6.4f" if is_male == True else "  %-15s  %6.4f  *%6.4f"
             print(fmt % (name, pdist.prob(True), pdist.prob(False)))
     except NotImplementedError:
         pass
@@ -297,8 +289,7 @@ def wsd_demo(trainer, word, features, n=1000):
     if word not in _inst_cache:
         _inst_cache[word] = [(i, i.senses[0]) for i in senseval.instances(word)]
     instances = _inst_cache[word][:]
-    if n > len(instances):
-        n = len(instances)
+    n = min(n, len(instances))
     senses = list({l for (i, l) in instances})
     print("  Senses: " + " ".join(senses))
 
@@ -339,8 +330,6 @@ def check_megam_config():
     try:
         _megam_bin
     except NameError as e:
-        err_msg = str(
-            "Please configure your megam binary first, e.g.\n"
-            ">>> nltk.config_megam('/usr/bin/local/megam')"
-        )
+        err_msg = "Please configure your megam binary first, e.g.\n>>> nltk.config_megam('/usr/bin/local/megam')"
+
         raise NameError(err_msg) from e

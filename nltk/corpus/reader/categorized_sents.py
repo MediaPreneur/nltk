@@ -146,7 +146,7 @@ class CategorizedSentencesCorpusReader(CategorizedCorpusReader, CorpusReader):
 
     def _read_sent_block(self, stream):
         sents = []
-        for i in range(20):  # Read 20 lines at a time.
+        for _ in range(20):
             line = stream.readline()
             if not line:
                 continue

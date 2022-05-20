@@ -210,16 +210,15 @@ class CHILDESCorpusReader(XMLCorpusReader):
         :return: the given file(s) as a dict of ``(corpus_property_key, value)``
         :rtype: list(dict)
         """
-        if not self._lazy:
-            return [self._get_corpus(fileid) for fileid in self.abspaths(fileids)]
-        return LazyMap(self._get_corpus, self.abspaths(fileids))
+        return (
+            LazyMap(self._get_corpus, self.abspaths(fileids))
+            if self._lazy
+            else [self._get_corpus(fileid) for fileid in self.abspaths(fileids)]
+        )
 
     def _get_corpus(self, fileid):
-        results = dict()
         xmldoc = ElementTree.parse(fileid).getroot()
-        for key, value in xmldoc.items():
-            results[key] = value
-        return results
+        return dict(xmldoc.items())
 
     def participants(self, fileids=None):
         """
@@ -227,9 +226,13 @@ class CHILDESCorpusReader(XMLCorpusReader):
             ``(participant_property_key, value)``
         :rtype: list(dict)
         """
-        if not self._lazy:
-            return [self._get_participants(fileid) for fileid in self.abspaths(fileids)]
-        return LazyMap(self._get_participants, self.abspaths(fileids))
+        return (
+            LazyMap(self._get_participants, self.abspaths(fileids))
+            if self._lazy
+            else [
+                self._get_participants(fileid) for fileid in self.abspaths(fileids)
+            ]
+        )
 
     def _get_participants(self, fileid):
         # multidimensional dicts
@@ -277,11 +280,10 @@ class CHILDESCorpusReader(XMLCorpusReader):
     def convert_age(self, age_year):
         "Caclculate age in months from a string in CHILDES format"
         m = re.match(r"P(\d+)Y(\d+)M?(\d?\d?)D?", age_year)
-        age_month = int(m.group(1)) * 12 + int(m.group(2))
+        age_month = int(m[1]) * 12 + int(m[2])
         try:
-            if int(m.group(3)) > 15:
+            if int(m[3]) > 15:
                 age_month += 1
-        # some corpora don't have age information?
         except ValueError as e:
             pass
         return age_month
@@ -316,22 +318,14 @@ class CHILDESCorpusReader(XMLCorpusReader):
         sentDiscount = 0
         for sent in sents:
             posList = [pos for (word, pos) in sent]
-            # if any part of the sentence is intelligible
-            if any(pos == "unk" for pos in posList):
+            if "unk" in posList or sent == [] or sent == lastSent:
                 continue
-            # if the sentence is null
-            elif sent == []:
-                continue
-            # if the sentence is the same as the last sent
-            elif sent == lastSent:
-                continue
-            else:
-                results.append([word for (word, pos) in sent])
+            results.append([word for (word, pos) in sent])
                 # count number of fillers
-                if len({"co", None}.intersection(posList)) > 0:
-                    numFillers += posList.count("co")
-                    numFillers += posList.count(None)
-                    sentDiscount += 1
+            if {"co", None}.intersection(posList):
+                numFillers += posList.count("co")
+                numFillers += posList.count(None)
+                sentDiscount += 1
             lastSent = sent
         try:
             thisWordList = flatten(results)
@@ -358,25 +352,23 @@ class CHILDESCorpusReader(XMLCorpusReader):
         # processing each xml doc
         results = []
         for xmlsent in xmldoc.findall(".//{%s}u" % NS):
-            sents = []
             # select speakers
             if speaker == "ALL" or xmlsent.get("who") in speaker:
+                infl = None
+                sents = []
                 for xmlword in xmlsent.findall(".//{%s}w" % NS):
-                    infl = None
                     suffixStem = None
                     suffixTag = None
                     # getting replaced words
-                    if replace and xmlsent.find(f".//{{{NS}}}w/{{{NS}}}replacement"):
-                        xmlword = xmlsent.find(
-                            f".//{{{NS}}}w/{{{NS}}}replacement/{{{NS}}}w"
-                        )
-                    elif replace and xmlsent.find(f".//{{{NS}}}w/{{{NS}}}wk"):
-                        xmlword = xmlsent.find(f".//{{{NS}}}w/{{{NS}}}wk")
+                    if replace:
+                        if xmlsent.find(f".//{{{NS}}}w/{{{NS}}}replacement"):
+                            xmlword = xmlsent.find(
+                                f".//{{{NS}}}w/{{{NS}}}replacement/{{{NS}}}w"
+                            )
+                        elif xmlsent.find(f".//{{{NS}}}w/{{{NS}}}wk"):
+                            xmlword = xmlsent.find(f".//{{{NS}}}w/{{{NS}}}wk")
                     # get text
-                    if xmlword.text:
-                        word = xmlword.text
-                    else:
-                        word = ""
+                    word = xmlword.text or ""
                     # strip tailing space
                     if strip_space:
                         word = word.strip()
@@ -392,7 +384,7 @@ class CHILDESCorpusReader(XMLCorpusReader):
                             xmlinfl = xmlword.find(
                                 f".//{{{NS}}}mor/{{{NS}}}mw/{{{NS}}}mk"
                             )
-                            word += "-" + xmlinfl.text
+                            word += f"-{xmlinfl.text}"
                         except:
                             pass
                         # if there is a suffix
@@ -405,14 +397,14 @@ class CHILDESCorpusReader(XMLCorpusReader):
                         except AttributeError:
                             suffixStem = ""
                         if suffixStem:
-                            word += "~" + suffixStem
+                            word += f"~{suffixStem}"
                     # pos
                     if relation or pos:
                         try:
                             xmlpos = xmlword.findall(".//{%s}c" % NS)
                             xmlpos2 = xmlword.findall(".//{%s}s" % NS)
                             if xmlpos2 != []:
-                                tag = xmlpos[0].text + ":" + xmlpos2[0].text
+                                tag = f"{xmlpos[0].text}:{xmlpos2[0].text}"
                             else:
                                 tag = xmlpos[0].text
                         except (AttributeError, IndexError) as e:
@@ -422,20 +414,17 @@ class CHILDESCorpusReader(XMLCorpusReader):
                                 ".//{%s}mor/{%s}mor-post/{%s}mw/{%s}pos/{%s}c"
                                 % (NS, NS, NS, NS, NS)
                             )
-                            xmlsuffixpos2 = xmlword.findall(
+                            if xmlsuffixpos2 := xmlword.findall(
                                 ".//{%s}mor/{%s}mor-post/{%s}mw/{%s}pos/{%s}s"
                                 % (NS, NS, NS, NS, NS)
-                            )
-                            if xmlsuffixpos2:
-                                suffixTag = (
-                                    xmlsuffixpos[0].text + ":" + xmlsuffixpos2[0].text
-                                )
+                            ):
+                                suffixTag = f"{xmlsuffixpos[0].text}:{xmlsuffixpos2[0].text}"
                             else:
                                 suffixTag = xmlsuffixpos[0].text
                         except:
                             pass
                         if suffixTag:
-                            tag += "~" + suffixTag
+                            tag += f"~{suffixTag}"
                         word = (word, tag)
                     # relational
                     # the gold standard is stored in
@@ -444,18 +433,8 @@ class CHILDESCorpusReader(XMLCorpusReader):
                         for xmlstem_rel in xmlword.findall(
                             f".//{{{NS}}}mor/{{{NS}}}gra"
                         ):
-                            if not xmlstem_rel.get("type") == "grt":
-                                word = (
-                                    word[0],
-                                    word[1],
-                                    xmlstem_rel.get("index")
-                                    + "|"
-                                    + xmlstem_rel.get("head")
-                                    + "|"
-                                    + xmlstem_rel.get("relation"),
-                                )
-                            else:
-                                word = (
+                            word = (
+                                (
                                     word[0],
                                     word[1],
                                     word[2],
@@ -467,22 +446,24 @@ class CHILDESCorpusReader(XMLCorpusReader):
                                     + "|"
                                     + xmlstem_rel.get("relation"),
                                 )
+                                if xmlstem_rel.get("type") == "grt"
+                                else (
+                                    word[0],
+                                    word[1],
+                                    xmlstem_rel.get("index")
+                                    + "|"
+                                    + xmlstem_rel.get("head")
+                                    + "|"
+                                    + xmlstem_rel.get("relation"),
+                                )
+                            )
+
                         try:
                             for xmlpost_rel in xmlword.findall(
                                 f".//{{{NS}}}mor/{{{NS}}}mor-post/{{{NS}}}gra"
                             ):
-                                if not xmlpost_rel.get("type") == "grt":
-                                    suffixStem = (
-                                        suffixStem[0],
-                                        suffixStem[1],
-                                        xmlpost_rel.get("index")
-                                        + "|"
-                                        + xmlpost_rel.get("head")
-                                        + "|"
-                                        + xmlpost_rel.get("relation"),
-                                    )
-                                else:
-                                    suffixStem = (
+                                suffixStem = (
+                                    (
                                         suffixStem[0],
                                         suffixStem[1],
                                         suffixStem[2],
@@ -494,6 +475,18 @@ class CHILDESCorpusReader(XMLCorpusReader):
                                         + "|"
                                         + xmlpost_rel.get("relation"),
                                     )
+                                    if xmlpost_rel.get("type") == "grt"
+                                    else (
+                                        suffixStem[0],
+                                        suffixStem[1],
+                                        xmlpost_rel.get("index")
+                                        + "|"
+                                        + xmlpost_rel.get("head")
+                                        + "|"
+                                        + xmlpost_rel.get("relation"),
+                                    )
+                                )
+
                         except:
                             pass
                     sents.append(word)
@@ -536,9 +529,9 @@ class CHILDESCorpusReader(XMLCorpusReader):
         import webbrowser
 
         if urlbase:
-            path = urlbase + "/" + fileid
+            path = f"{urlbase}/{fileid}"
         else:
-            full = self.root + "/" + fileid
+            full = f"{self.root}/{fileid}"
             full = re.sub(r"\\", "/", full)
             if "/childes/" in full.lower():
                 # Discard /data-xml/ if present
@@ -553,7 +546,7 @@ class CHILDESCorpusReader(XMLCorpusReader):
             path = path[:-4]
 
         if not path.endswith(".cha"):
-            path = path + ".cha"
+            path = f"{path}.cha"
 
         url = self.childes_url_base + path
 
@@ -582,7 +575,7 @@ def demo(corpus_root=None):
             for (key, value) in childes.corpus(file)[0].items():
                 if key == "Corpus":
                     corpus = value
-                if key == "Id":
+                elif key == "Id":
                     corpus_id = value
             print("Reading", corpus, corpus_id, " .....")
             print("words:", childes.words(file)[:7], "...")
