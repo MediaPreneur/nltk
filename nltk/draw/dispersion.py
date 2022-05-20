@@ -40,13 +40,12 @@ def dispersion_plot(text, words, ignore_case=False, title="Lexical Dispersion Pl
         words_to_comp = words
         text_to_comp = text
 
-    points = [
+    if points := [
         (x, y)
         for x in range(len(text_to_comp))
         for y in range(len(words_to_comp))
         if text_to_comp[x] == words_to_comp[y]
-    ]
-    if points:
+    ]:
         x, y = list(zip(*points))
     else:
         x = y = ()

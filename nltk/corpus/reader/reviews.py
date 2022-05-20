@@ -85,10 +85,7 @@ class Review:
         :param review_lines: the list of the ReviewLines that belong to the Review.
         """
         self.title = title
-        if review_lines is None:
-            self.review_lines = []
-        else:
-            self.review_lines = review_lines
+        self.review_lines = [] if review_lines is None else review_lines
 
     def add_line(self, review_line):
         """
@@ -122,9 +119,7 @@ class Review:
         return [review_line.sent for review_line in self.review_lines]
 
     def __repr__(self):
-        return 'Review(title="{}", review_lines={})'.format(
-            self.title, self.review_lines
-        )
+        return f'Review(title="{self.title}", review_lines={self.review_lines})'
 
 
 class ReviewLine:
@@ -135,20 +130,11 @@ class ReviewLine:
 
     def __init__(self, sent, features=None, notes=None):
         self.sent = sent
-        if features is None:
-            self.features = []
-        else:
-            self.features = features
-
-        if notes is None:
-            self.notes = []
-        else:
-            self.notes = notes
+        self.features = [] if features is None else features
+        self.notes = [] if notes is None else notes
 
     def __repr__(self):
-        return "ReviewLine(features={}, notes={}, sent={})".format(
-            self.features, self.notes, self.sent
-        )
+        return f"ReviewLine(features={self.features}, notes={self.notes}, sent={self.sent})"
 
 
 class ReviewsCorpusReader(CorpusReader):
@@ -275,7 +261,7 @@ class ReviewsCorpusReader(CorpusReader):
 
     def _read_features(self, stream):
         features = []
-        for i in range(20):
+        for _ in range(20):
             line = stream.readline()
             if not line:
                 return features
@@ -287,11 +273,8 @@ class ReviewsCorpusReader(CorpusReader):
             line = stream.readline()
             if not line:
                 return []  # end of file.
-            title_match = re.match(TITLE, line)
-            if title_match:
-                review = Review(
-                    title=title_match.group(1).strip()
-                )  # We create a new review
+            if title_match := re.match(TITLE, line):
+                review = Review(title=title_match[1].strip())
                 break
 
         # Scan until we find another line matching the regexp, or EOF.
@@ -318,14 +301,13 @@ class ReviewsCorpusReader(CorpusReader):
     def _read_sent_block(self, stream):
         sents = []
         for review in self._read_review_block(stream):
-            sents.extend([sent for sent in review.sents()])
+            sents.extend(list(review.sents()))
         return sents
 
     def _read_word_block(self, stream):
         words = []
-        for i in range(20):  # Read 20 lines at a time.
+        for _ in range(20):
             line = stream.readline()
-            sent = re.findall(SENT, line)
-            if sent:
+            if sent := re.findall(SENT, line):
                 words.extend(self._word_tokenizer.tokenize(sent[0]))
         return words

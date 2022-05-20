@@ -81,15 +81,7 @@ class PPAttachmentCorpusReader(CorpusReader):
         )
 
     def _read_tuple_block(self, stream):
-        line = stream.readline()
-        if line:
-            return [tuple(line.split())]
-        else:
-            return []
+        return [tuple(line.split())] if (line := stream.readline()) else []
 
     def _read_obj_block(self, stream):
-        line = stream.readline()
-        if line:
-            return [PPAttachment(*line.split())]
-        else:
-            return []
+        return [PPAttachment(*line.split())] if (line := stream.readline()) else []

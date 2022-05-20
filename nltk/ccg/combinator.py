@@ -107,10 +107,11 @@ class UndirectedFunctionApplication(UndirectedBinaryCombinator):
     """
 
     def can_combine(self, function, argument):
-        if not function.is_function():
-            return False
-
-        return not function.arg().can_unify(argument) is None
+        return (
+            function.arg().can_unify(argument) is not None
+            if function.is_function()
+            else False
+        )
 
     def combine(self, function, argument):
         if not function.is_function():
@@ -157,7 +158,7 @@ class UndirectedComposition(UndirectedBinaryCombinator):
         if not (function.is_function() and argument.is_function()):
             return False
         if function.dir().can_compose() and argument.dir().can_compose():
-            return not function.arg().can_unify(argument.res()) is None
+            return function.arg().can_unify(argument.res()) is not None
         return False
 
     def combine(self, function, argument):
@@ -248,9 +249,11 @@ class UndirectedSubstitution(UndirectedBinaryCombinator):
 
 # Predicate for forward substitution
 def forwardSConstraint(left, right):
-    if not bothForward(left, right):
-        return False
-    return left.res().dir().is_forward() and left.arg().is_primitive()
+    return (
+        left.res().dir().is_forward() and left.arg().is_primitive()
+        if bothForward(left, right)
+        else False
+    )
 
 
 # Predicate for backward crossed substitution

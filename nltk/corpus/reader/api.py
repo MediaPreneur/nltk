@@ -118,7 +118,7 @@ class CorpusReader:
         if isinstance(self._root, ZipFilePathPointer):
             path = f"{self._root.zipfile.filename}/{self._root.entry}"
         else:
-            path = "%s" % self._root.path
+            path = f"{self._root.path}"
         return f"<{self.__class__.__name__} in {path!r}>"
 
     def ensure_loaded(self):
@@ -228,8 +228,7 @@ class CorpusReader:
         :param file: The file identifier of the file to read.
         """
         encoding = self.encoding(file)
-        stream = self._root.join(file).open(encoding)
-        return stream
+        return self._root.join(file).open(encoding)
 
     def encoding(self, file):
         """
@@ -334,7 +333,7 @@ class CategorizedCorpusReader:
 
         if self._pattern is not None:
             for file_id in self._fileids:
-                category = re.match(self._pattern, file_id).group(1)
+                category = re.match(self._pattern, file_id)[1]
                 self._add(file_id, category)
 
         elif self._map is not None:
@@ -385,7 +384,7 @@ class CategorizedCorpusReader:
             if categories in self._c2f:
                 return sorted(self._c2f[categories])
             else:
-                raise ValueError("Category %s not found" % categories)
+                raise ValueError(f"Category {categories} not found")
         else:
             if self._f2c is None:
                 self._init()
@@ -394,10 +393,7 @@ class CategorizedCorpusReader:
     def _resolve(self, fileids, categories):
         if fileids is not None and categories is not None:
             raise ValueError("Specify fileids or categories, not both")
-        if categories is not None:
-            return self.fileids(categories)
-        else:
-            return fileids
+        return self.fileids(categories) if categories is not None else fileids
 
     def raw(self, fileids=None, categories=None):
         return super().raw(self._resolve(fileids, categories))

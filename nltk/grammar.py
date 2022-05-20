@@ -148,9 +148,9 @@ class Nonterminal:
         :rtype: str
         """
         if isinstance(self._symbol, str):
-            return "%s" % self._symbol
+            return f"{self._symbol}"
         else:
-            return "%s" % repr(self._symbol)
+            return f"{repr(self._symbol)}"
 
     def __str__(self):
         """
@@ -159,9 +159,9 @@ class Nonterminal:
         :rtype: str
         """
         if isinstance(self._symbol, str):
-            return "%s" % self._symbol
+            return f"{self._symbol}"
         else:
-            return "%s" % repr(self._symbol)
+            return f"{repr(self._symbol)}"
 
     def __div__(self, rhs):
         """
@@ -203,10 +203,7 @@ def nonterminals(symbols):
         in the same order as the symbols names.
     :rtype: list(Nonterminal)
     """
-    if "," in symbols:
-        symbol_list = symbols.split(",")
-    else:
-        symbol_list = symbols.split()
+    symbol_list = symbols.split(",") if "," in symbols else symbols.split()
     return [Nonterminal(s.strip()) for s in symbol_list]
 
 
@@ -333,7 +330,7 @@ class Production:
 
         :rtype: str
         """
-        result = "%s -> " % repr(self._lhs)
+        result = f"{repr(self._lhs)} -> "
         result += " ".join(repr(el) for el in self._rhs)
         return result
 
@@ -343,7 +340,7 @@ class Production:
 
         :rtype: str
         """
-        return "%s" % self
+        return f"{self}"
 
     def __eq__(self, other):
         """
@@ -578,12 +575,7 @@ class CFG:
 
         # no constraints so return everything
         if not lhs and not rhs:
-            if not empty:
-                return self._productions
-            else:
-                return self._empty_index.values()
-
-        # only lhs specified so look up its index
+            return self._empty_index.values() if empty else self._productions
         elif lhs and not rhs:
             if not empty:
                 return self._lhs_index.get(lhs, [])
@@ -592,11 +584,9 @@ class CFG:
             else:
                 return []
 
-        # only rhs specified so look up its index
-        elif rhs and not lhs:
+        elif not lhs:
             return self._rhs_index.get(rhs, [])
 
-        # intersect
         else:
             return [
                 prod
@@ -659,8 +649,7 @@ class CFG:
 
         :type tokens: list(str)
         """
-        missing = [tok for tok in tokens if not self._lexical_index.get(tok)]
-        if missing:
+        if missing := [tok for tok in tokens if not self._lexical_index.get(tok)]:
             missing = ", ".join(f"{w!r}" for w in missing)
             raise ValueError(
                 "Grammar does not cover some of the " "input words: %r." % missing
@@ -761,8 +750,7 @@ class CFG:
         if flexible:
             return step2
         step3 = CFG.remove_unitary_rules(step2)
-        step4 = CFG(step3.start(), list(set(step3.productions())))
-        return step4
+        return CFG(step3.start(), list(set(step3.productions())))
 
     @classmethod
     def remove_unitary_rules(cls, grammar):
@@ -787,8 +775,7 @@ class CFG:
                 else:
                     unitary.append(new_rule)
 
-        n_grammar = CFG(grammar.start(), result)
-        return n_grammar
+        return CFG(grammar.start(), result)
 
     @classmethod
     def binarize(cls, grammar, padding="@$@"):
@@ -809,7 +796,7 @@ class CFG:
             if len(rule.rhs()) > 2:
                 # this rule needs to be broken down
                 left_side = rule.lhs()
-                for k in range(0, len(rule.rhs()) - 2):
+                for k in range(len(rule.rhs()) - 2):
                     tsym = rule.rhs()[k]
                     new_sym = Nonterminal(left_side.symbol() + padding + tsym.symbol())
                     new_production = Production(left_side, (tsym, new_sym))
@@ -820,8 +807,7 @@ class CFG:
             else:
                 result.append(rule)
 
-        n_grammar = CFG(grammar.start(), result)
-        return n_grammar
+        return CFG(grammar.start(), result)
 
     @classmethod
     def eliminate_start(cls, grammar):
@@ -840,8 +826,7 @@ class CFG:
         if need_to_add:
             start = Nonterminal("S0_SIGMA")
             result.append(Production(start, [grammar.start()]))
-            n_grammar = CFG(start, result)
-            return n_grammar
+            return CFG(start, result)
         return grammar
 
     def __repr__(self):
@@ -961,23 +946,16 @@ class FeatureGrammar(CFG):
 
         # no constraints so return everything
         if not lhs and not rhs:
-            if empty:
-                return self._empty_productions
-            else:
-                return self._productions
-
-        # only lhs specified so look up its index
+            return self._empty_productions if empty else self._productions
         elif lhs and not rhs:
             if empty:
                 return self._empty_index.get(self._get_type_if_possible(lhs), [])
             else:
                 return self._lhs_index.get(self._get_type_if_possible(lhs), [])
 
-        # only rhs specified so look up its index
-        elif rhs and not lhs:
+        elif not lhs:
             return self._rhs_index.get(self._get_type_if_possible(rhs), [])
 
-        # intersect
         else:
             return [
                 prod
@@ -1022,7 +1000,7 @@ class FeatureValueType:
         self._value = value
 
     def __repr__(self):
-        return "<%s>" % self._value
+        return f"<{self._value}>"
 
     def __eq__(self, other):
         return type(self) == type(other) and self._value == other._value
@@ -1405,11 +1383,7 @@ def read_grammar(input, nonterm_parser, probabilistic=False, encoding=None):
     """
     if encoding is not None:
         input = input.decode(encoding)
-    if isinstance(input, str):
-        lines = input.split("\n")
-    else:
-        lines = input
-
+    lines = input.split("\n") if isinstance(input, str) else input
     start = None
     productions = []
     continue_line = ""
@@ -1418,18 +1392,17 @@ def read_grammar(input, nonterm_parser, probabilistic=False, encoding=None):
         if line.startswith("#") or line == "":
             continue
         if line.endswith("\\"):
-            continue_line = line[:-1].rstrip() + " "
+            continue_line = f"{line[:-1].rstrip()} "
             continue
         continue_line = ""
         try:
             if line[0] == "%":
                 directive, args = line[1:].split(None, 1)
-                if directive == "start":
-                    start, pos = nonterm_parser(args, 0)
-                    if pos != len(args):
-                        raise ValueError("Bad argument to start directive")
-                else:
+                if directive != "start":
                     raise ValueError("Bad directive")
+                start, pos = nonterm_parser(args, 0)
+                if pos != len(args):
+                    raise ValueError("Bad argument to start directive")
             else:
                 # expand out the disjunctions on the RHS
                 productions += _read_production(line, nonterm_parser, probabilistic)
@@ -1449,7 +1422,7 @@ _STANDARD_NONTERM_RE = re.compile(r"( [\w/][\w/^<>-]* ) \s*", re.VERBOSE)
 def standard_nonterm_parser(string, pos):
     m = _STANDARD_NONTERM_RE.match(string, pos)
     if not m:
-        raise ValueError("Expected a nonterminal, found: " + string[pos:])
+        raise ValueError(f"Expected a nonterminal, found: {string[pos:]}")
     return (Nonterminal(m.group(1)), m.end())
 
 

@@ -48,9 +48,12 @@ class YCOECorpusReader(CorpusReader):
             raise ValueError('Items in "psd" and "pos" ' "subdirectories do not match.")
 
         fileids = sorted(
-            ["%s.psd" % doc for doc in documents]
-            + ["%s.pos" % doc for doc in documents]
+            (
+                [f"{doc}.psd" for doc in documents]
+                + [f"{doc}.pos" for doc in documents]
+            )
         )
+
         CorpusReader.__init__(self, root, fileids, encoding)
         self._documents = sorted(documents)
 
@@ -66,7 +69,7 @@ class YCOECorpusReader(CorpusReader):
             fileids = [fileids]
         for f in fileids:
             if f not in self._fileids:
-                raise KeyError("File id %s not found" % fileids)
+                raise KeyError(f"File id {fileids} not found")
         # Strip off the '.pos' and '.psd' extensions.
         return sorted({f[:-4] for f in fileids})
 
@@ -81,8 +84,10 @@ class YCOECorpusReader(CorpusReader):
             documents = [documents]
         return sorted(
             set(
-                ["%s.pos" % doc for doc in documents]
-                + ["%s.psd" % doc for doc in documents]
+                (
+                    [f"{doc}.pos" for doc in documents]
+                    + [f"{doc}.psd" for doc in documents]
+                )
             )
         )
 
@@ -105,7 +110,7 @@ class YCOECorpusReader(CorpusReader):
                             "a list of document identifiers."
                         )
                     else:
-                        raise ValueError("Document identifier %s not found" % document)
+                        raise ValueError(f"Document identifier {document} not found")
         return [f"{d}.{subcorpus}" for d in documents]
 
     # Delegate to one of our two sub-readers:

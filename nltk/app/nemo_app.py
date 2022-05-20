@@ -63,7 +63,7 @@ class Zone:
         self.initScrollText(frm, self.txt, initialText)
         for i in range(2):
             self.txt.tag_config(colors[i], background=colors[i])
-            self.txt.tag_config("emph" + colors[i], foreground=emphColors[i])
+            self.txt.tag_config(f"emph{colors[i]}", foreground=emphColors[i])
 
     def initScrollText(self, frm, txt, contents):
         scl = Scrollbar(frm)
@@ -87,31 +87,28 @@ class Zone:
 class FindZone(Zone):
     def addTags(self, m):
         color = next(self.colorCycle)
-        self.txt.tag_add(color, "1.0+%sc" % m.start(), "1.0+%sc" % m.end())
+        self.txt.tag_add(color, f"1.0+{m.start()}c", f"1.0+{m.end()}c")
         try:
             self.txt.tag_add(
-                "emph" + color, "1.0+%sc" % m.start("emph"), "1.0+%sc" % m.end("emph")
+                f"emph{color}", f'1.0+{m.start("emph")}c', f'1.0+{m.end("emph")}c'
             )
+
         except:
             pass
 
     def substitute(self, *args):
         for color in colors:
             self.txt.tag_remove(color, "1.0", "end")
-            self.txt.tag_remove("emph" + color, "1.0", "end")
+            self.txt.tag_remove(f"emph{color}", "1.0", "end")
         self.rex = re.compile("")  # default value in case of malformed regexp
         self.rex = re.compile(self.fld.get("1.0", "end")[:-1], re.MULTILINE)
         try:
-            re.compile("(?P<emph>%s)" % self.fld.get(SEL_FIRST, SEL_LAST))
+            re.compile(f"(?P<emph>{self.fld.get(SEL_FIRST, SEL_LAST)})")
             self.rexSel = re.compile(
-                "%s(?P<emph>%s)%s"
-                % (
-                    self.fld.get("1.0", SEL_FIRST),
-                    self.fld.get(SEL_FIRST, SEL_LAST),
-                    self.fld.get(SEL_LAST, "end")[:-1],
-                ),
+                f'{self.fld.get("1.0", SEL_FIRST)}(?P<emph>{self.fld.get(SEL_FIRST, SEL_LAST)}){self.fld.get(SEL_LAST, "end")[:-1]}',
                 re.MULTILINE,
             )
+
         except:
             self.rexSel = self.rex
         self.rexSel.sub(self.addTags, self.txt.get("1.0", "end"))
@@ -120,10 +117,8 @@ class FindZone(Zone):
 class ReplaceZone(Zone):
     def addTags(self, m):
         s = sz.rex.sub(self.repl, m.group())
-        self.txt.delete(
-            "1.0+%sc" % (m.start() + self.diff), "1.0+%sc" % (m.end() + self.diff)
-        )
-        self.txt.insert("1.0+%sc" % (m.start() + self.diff), s, next(self.colorCycle))
+        self.txt.delete(f"1.0+{m.start() + self.diff}c", f"1.0+{m.end() + self.diff}c")
+        self.txt.insert(f"1.0+{m.start() + self.diff}c", s, next(self.colorCycle))
         self.diff += len(s) - (m.end() - m.start())
 
     def substitute(self):

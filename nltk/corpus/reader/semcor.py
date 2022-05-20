@@ -153,7 +153,7 @@ class SemcorCorpusReader(XMLCorpusReader):
         lemma = xmlword.get("lemma", tkn)  # lemma or NE class
         lexsn = xmlword.get("lexsn")  # lex_sense (locator for the lemma's sense)
         if lexsn is not None:
-            sense_key = lemma + "%" + lexsn
+            sense_key = f"{lemma}%{lexsn}"
             wnpos = ("n", "v", "a", "r", "s")[
                 int(lexsn.split(":")[0]) - 1
             ]  # see http://wordnet.princeton.edu/man/senseidx.5WN.html
@@ -173,53 +173,52 @@ class SemcorCorpusReader(XMLCorpusReader):
         )  # part of speech for the whole chunk (None for punctuation)
 
         if unit == "token":
-            if not pos_tag and not sem_tag:
-                itm = tkn
-            else:
-                itm = (
+            return (
+                tkn
+                if not pos_tag and not sem_tag
+                else (
                     (tkn,)
                     + ((pos,) if pos_tag else ())
                     + ((lemma, wnpos, sensenum, isOOVEntity) if sem_tag else ())
                 )
-            return itm
-        else:
-            ww = tkn.split("_")  # TODO: case where punctuation intervenes in MWE
-            if unit == "word":
-                return ww
-            else:
-                if sensenum is not None:
-                    try:
-                        sense = wordnet.lemma_from_key(sense_key)  # Lemma object
-                    except Exception:
+            )
+
+        ww = tkn.split("_")  # TODO: case where punctuation intervenes in MWE
+        if unit == "word":
+            return ww
+        if sensenum is not None:
+            try:
+                sense = wordnet.lemma_from_key(sense_key)  # Lemma object
+            except Exception:
                         # cannot retrieve the wordnet.Lemma object. possible reasons:
                         #  (a) the wordnet corpus is not downloaded;
                         #  (b) a nonexistent sense is annotated: e.g., such.s.00 triggers:
                         #  nltk.corpus.reader.wordnet.WordNetError: No synset found for key u'such%5:00:01:specified:00'
                         # solution: just use the lemma name as a string
-                        try:
-                            sense = "%s.%s.%02d" % (
-                                lemma,
-                                wnpos,
-                                int(sensenum),
-                            )  # e.g.: reach.v.02
-                        except ValueError:
-                            sense = (
-                                lemma + "." + wnpos + "." + sensenum
-                            )  # e.g. the sense number may be "2;1"
+                try:
+                    sense = "%s.%s.%02d" % (
+                        lemma,
+                        wnpos,
+                        int(sensenum),
+                    )  # e.g.: reach.v.02
+                except ValueError:
+                    sense = f"{lemma}.{wnpos}.{sensenum}"
 
-                bottom = [Tree(pos, ww)] if pos_tag else ww
+        bottom = [Tree(pos, ww)] if pos_tag else ww
 
-                if sem_tag and isOOVEntity:
-                    if sensenum is not None:
-                        return Tree(sense, [Tree("NE", bottom)])
-                    else:  # 'other' NE
-                        return Tree("NE", bottom)
-                elif sem_tag and sensenum is not None:
-                    return Tree(sense, bottom)
-                elif pos_tag:
-                    return bottom[0]
-                else:
-                    return bottom  # chunk as a list
+        if sem_tag and isOOVEntity:
+            return (
+                Tree(sense, [Tree("NE", bottom)])
+                if sensenum is not None
+                else Tree("NE", bottom)
+            )
+
+        elif sem_tag and sensenum is not None:
+            return Tree(sense, bottom)
+        elif pos_tag:
+            return bottom[0]
+        else:
+            return bottom  # chunk as a list
 
 
 def _all_xmlwords_in(elt, result=None):
@@ -258,11 +257,7 @@ class SemcorWordView(XMLCorpusView):
         :param sem_tag: Whether to include semantic tags, namely WordNet lemma
             and OOV named entity status.
         """
-        if bracket_sent:
-            tagspec = ".*/s"
-        else:
-            tagspec = ".*/s/(punc|wf)"
-
+        tagspec = ".*/s" if bracket_sent else ".*/s/(punc|wf)"
         self._unit = unit
         self._sent = bracket_sent
         self._pos_tag = pos_tag
@@ -272,10 +267,7 @@ class SemcorWordView(XMLCorpusView):
         XMLCorpusView.__init__(self, fileid, tagspec)
 
     def handle_elt(self, elt, context):
-        if self._sent:
-            return self.handle_sent(elt)
-        else:
-            return self.handle_word(elt)
+        return self.handle_sent(elt) if self._sent else self.handle_word(elt)
 
     def handle_word(self, elt):
         return SemcorCorpusReader._word(
@@ -285,12 +277,11 @@ class SemcorWordView(XMLCorpusView):
     def handle_sent(self, elt):
         sent = []
         for child in elt:
-            if child.tag in ("wf", "punc"):
-                itm = self.handle_word(child)
-                if self._unit == "word":
-                    sent.extend(itm)
-                else:
-                    sent.append(itm)
+            if child.tag not in ("wf", "punc"):
+                raise ValueError(f"Unexpected element {child.tag}")
+            itm = self.handle_word(child)
+            if self._unit == "word":
+                sent.extend(itm)
             else:
-                raise ValueError("Unexpected element %s" % child.tag)
+                sent.append(itm)
         return SemcorSentence(elt.attrib["snum"], sent)

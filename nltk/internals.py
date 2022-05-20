@@ -117,10 +117,7 @@ def java(cmd, classpath=None, stdin=None, stdout=None, stderr=None, blocking=Tru
         config_java()
 
     # Set up the classpath.
-    if isinstance(classpath, str):
-        classpaths = [classpath]
-    else:
-        classpaths = list(classpath)
+    classpaths = [classpath] if isinstance(classpath, str) else list(classpath)
     classpath = os.path.pathsep.join(classpaths)
 
     # Construct the full command string.
@@ -137,7 +134,7 @@ def java(cmd, classpath=None, stdin=None, stdout=None, stderr=None, blocking=Tru
     # Check the return code.
     if p.returncode != 0:
         print(_decode_stdoutdata(stderr))
-        raise OSError("Java command failed : " + str(cmd))
+        raise OSError(f"Java command failed : {cmd}")
 
     return (stdout, stderr)
 
@@ -212,7 +209,7 @@ def read_str(s, start_position):
         match = _STRING_END_RE.search(s, position)
         if not match:
             raise ReadError("close quote", position)
-        if match.group(0) == "\\":
+        if match[0] == "\\":
             position = match.end() + 1
         else:
             break
@@ -298,10 +295,7 @@ def read_number(s, start_position):
     m = _READ_NUMBER_VALUE.match(s, start_position)
     if not m or not (m.group(1) or m.group(2)):
         raise ReadError("number", start_position)
-    if m.group(2):
-        return float(m.group()), m.end()
-    else:
-        return int(m.group()), m.end()
+    return (float(m.group()), m.end()) if m.group(2) else (int(m.group()), m.end())
 
 
 ######################################################################
@@ -350,11 +344,10 @@ def _mro(cls):
     """
     if isinstance(cls, type):
         return cls.__mro__
-    else:
-        mro = [cls]
-        for base in cls.__bases__:
-            mro.extend(_mro(base))
-        return mro
+    mro = [cls]
+    for base in cls.__bases__:
+        mro.extend(_mro(base))
+    return mro
 
 
 ######################################################################
@@ -370,17 +363,17 @@ def _add_epytext_field(obj, field, message):
     # it from the new field, and check its indentation.
     if obj.__doc__:
         obj.__doc__ = obj.__doc__.rstrip() + "\n\n"
-        indents = re.findall(r"(?<=\n)[ ]+(?!\s)", obj.__doc__.expandtabs())
-        if indents:
+        if indents := re.findall(
+            r"(?<=\n)[ ]+(?!\s)", obj.__doc__.expandtabs()
+        ):
             indent = min(indents)
-    # If we don't have a docstring, add an empty one.
     else:
         obj.__doc__ = ""
 
     obj.__doc__ += textwrap.fill(
         f"@{field}: {message}",
         initial_indent=indent,
-        subsequent_indent=indent + "    ",
+        subsequent_indent=f"{indent}    ",
     )
 
 
@@ -433,12 +426,10 @@ class Deprecated:
     """
 
     def __new__(cls, *args, **kwargs):
-        # Figure out which class is the deprecated one.
-        dep_cls = None
-        for base in _mro(cls):
-            if Deprecated in base.__bases__:
-                dep_cls = base
-                break
+        dep_cls = next(
+            (base for base in _mro(cls) if Deprecated in base.__bases__), None
+        )
+
         assert dep_cls, "Unable to determine which base is deprecated."
 
         # Construct an appropriate warning.
@@ -448,9 +439,9 @@ class Deprecated:
         # Strip off any indentation.
         doc = re.sub(r"(?m)^\s*", "", doc)
         # Construct a 'name' string.
-        name = "Class %s" % dep_cls.__name__
+        name = f"Class {dep_cls.__name__}"
         if cls != dep_cls:
-            name += " (base class for %s)" % cls.__name__
+            name += f" (base class for {cls.__name__})"
         # Put it all together.
         msg = f"{name} has been deprecated.  {doc}"
         # Wrap it.
@@ -603,7 +594,7 @@ def find_file_iter(
             "configuration parameters" % filename
         )
         if env_vars:
-            msg += " or set the %s environment variable" % env_vars[0]
+            msg += f" or set the {env_vars[0]} environment variable"
         msg += "."
         if searchpath:
             msg += "\n\n  Searched in:"
@@ -706,14 +697,13 @@ def find_jar_iter(
     # If an explicit location was given, then check it, and yield it if
     # it's present; otherwise, complain.
     if path_to_jar is not None:
-        if os.path.isfile(path_to_jar):
-            yielded = True
-            yield path_to_jar
-        else:
+        if not os.path.isfile(path_to_jar):
             raise LookupError(
                 f"Could not find {name_pattern} jar file at {path_to_jar}"
             )
 
+        yielded = True
+        yield path_to_jar
     # Check environment variables
     for env_var in env_vars:
         if env_var in os.environ:
@@ -734,27 +724,20 @@ def find_jar_iter(
                             yield cp
                     # The case where user put directory containing the jar file in the classpath
                     if os.path.isdir(cp):
-                        if not is_regex:
-                            if os.path.isfile(os.path.join(cp, name_pattern)):
-                                if verbose:
-                                    print(f"[Found {name_pattern}: {cp}]")
-                                yielded = True
-                                yield os.path.join(cp, name_pattern)
-                        else:
+                        if is_regex:
                             # Look for file using regular expression
                             for file_name in os.listdir(cp):
                                 if re.match(name_pattern, file_name):
                                     if verbose:
-                                        print(
-                                            "[Found %s: %s]"
-                                            % (
-                                                name_pattern,
-                                                os.path.join(cp, file_name),
-                                            )
-                                        )
+                                        print(f"[Found {name_pattern}: {os.path.join(cp, file_name)}]")
                                     yielded = True
                                     yield os.path.join(cp, file_name)
 
+                        elif os.path.isfile(os.path.join(cp, name_pattern)):
+                            if verbose:
+                                print(f"[Found {name_pattern}: {cp}]")
+                            yielded = True
+                            yield os.path.join(cp, name_pattern)
             else:
                 jar_env = os.path.expanduser(os.environ[env_var])
                 jar_iter = (
@@ -783,10 +766,12 @@ def find_jar_iter(
         if is_regex:
             for filename in os.listdir(directory):
                 path_to_jar = os.path.join(directory, filename)
-                if os.path.isfile(path_to_jar):
-                    if re.match(name_pattern, filename):
-                        if verbose:
-                            print(f"[Found {filename}: {path_to_jar}]")
+                if (
+                    os.path.isfile(path_to_jar)
+                    and re.match(name_pattern, filename)
+                    and verbose
+                ):
+                    print(f"[Found {filename}: {path_to_jar}]")
                 yielded = True
                 yield path_to_jar
         else:
@@ -799,10 +784,10 @@ def find_jar_iter(
 
     if not yielded:
         # If nothing was found, raise an error
-        msg = "NLTK was unable to find %s!" % name_pattern
+        msg = f"NLTK was unable to find {name_pattern}!"
         if env_vars:
-            msg += " Set the %s environment variable" % env_vars[0]
-        msg = textwrap.fill(msg + ".", initial_indent="  ", subsequent_indent="  ")
+            msg += f" Set the {env_vars[0]} environment variable"
+        msg = textwrap.fill(f"{msg}.", initial_indent="  ", subsequent_indent="  ")
         if searchpath:
             msg += "\n\n  Searched in:"
             msg += "".join("\n    - %s" % d for d in searchpath)
@@ -993,10 +978,7 @@ class ElementWrapper:
 
     def find(self, path):
         elt = self._etree.find(path)
-        if elt is None:
-            return elt
-        else:
-            return ElementWrapper(elt)
+        return elt if elt is None else ElementWrapper(elt)
 
     def findall(self, path):
         return [ElementWrapper(elt) for elt in self._etree.findall(path)]
@@ -1039,11 +1021,11 @@ def slice_bounds(sequence, slice_obj, allow_step=False):
             start, stop = slice_bounds(sequence, slice(start, stop))
         return start, stop, step
 
-    # Otherwise, make sure that no non-default step value is used.
     elif slice_obj.step not in (None, 1):
         raise ValueError(
-            "slices with steps are not supported by %s" % sequence.__class__.__name__
+            f"slices with steps are not supported by {sequence.__class__.__name__}"
         )
+
 
     # Supply default offsets.
     if start is None:
@@ -1112,6 +1094,5 @@ def is_writable(path):
 
 def raise_unorderable_types(ordering, a, b):
     raise TypeError(
-        "unorderable types: %s() %s %s()"
-        % (type(a).__name__, ordering, type(b).__name__)
+        f"unorderable types: {type(a).__name__}() {ordering} {type(b).__name__}()"
     )

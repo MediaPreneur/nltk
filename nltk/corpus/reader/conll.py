@@ -270,10 +270,7 @@ class ConllCorpusReader(CorpusReader):
         stack = [Tree(self._root_label, [])]
 
         for (word, pos_tag, chunk_tag) in zip(words, pos_tags, chunk_tags):
-            if chunk_tag == "O":
-                state, chunk_type = "O", ""
-            else:
-                (state, chunk_type) = chunk_tag.split("-")
+            (state, chunk_type) = ("O", "") if chunk_tag == "O" else chunk_tag.split("-")
             # If it's a chunk we don't care about, treat it as O.
             if chunk_types is not None and chunk_type not in chunk_types:
                 state = "O"
@@ -352,10 +349,8 @@ class ConllCorpusReader(CorpusReader):
             stack = []
             for wordnum, srl_tag in enumerate(col):
                 (left, right) = srl_tag.split("*")
-                for tag in left.split("("):
-                    if tag:
-                        stack.append((tag, wordnum))
-                for i in range(right.count(")")):
+                stack.extend((tag, wordnum) for tag in left.split("(") if tag)
+                for _ in range(right.count(")")):
                     (tag, start) = stack.pop()
                     spanlist.append(((start, wordnum + 1), tag))
             spanlists.append(spanlist)
@@ -401,9 +396,7 @@ class ConllCorpusReader(CorpusReader):
     def _require(self, *columntypes):
         for columntype in columntypes:
             if columntype not in self._colmap:
-                raise ValueError(
-                    "This corpus does not contain a %s " "column." % columntype
-                )
+                raise ValueError(f"This corpus does not contain a {columntype} column.")
 
     @staticmethod
     def _get_column(grid, column_index):
@@ -477,12 +470,12 @@ class ConllSRLInstance:
                 word = word[0]
             for (start, end), argid in self.arguments:
                 if i == start:
-                    s += "[%s " % argid
+                    s += f"[{argid} "
                 if i == end:
                     s += "] "
             if i in self.verb:
-                word = "<<%s>>" % word
-            s += word + " "
+                word = f"<<{word}>>"
+            s += f"{word} "
         return hdr + textwrap.fill(
             s.replace(" ]", "]"), initial_indent="    ", subsequent_indent="    "
         )

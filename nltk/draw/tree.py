@@ -77,7 +77,10 @@ class TreeSegmentWidget(CanvasWidget):
         self._ordered = False
 
         # Create canvas objects.
-        self._lines = [canvas.create_line(0, 0, 0, 0, fill="#006060") for c in subtrees]
+        self._lines = [
+            canvas.create_line(0, 0, 0, 0, fill="#006060") for _ in subtrees
+        ]
+
         self._polygon = canvas.create_polygon(
             0, 0, fill="", state="hidden", outline="#006060"
         )
@@ -151,10 +154,7 @@ class TreeSegmentWidget(CanvasWidget):
         elif attr == "yspace":
             return self._yspace
         elif attr == "orientation":
-            if self._horizontal:
-                return "horizontal"
-            else:
-                return "vertical"
+            return "horizontal" if self._horizontal else "vertical"
         elif attr == "ordered":
             return self._ordered
         else:
@@ -202,10 +202,7 @@ class TreeSegmentWidget(CanvasWidget):
     # but.. lines???
 
     def _tags(self):
-        if self._roof:
-            return [self._polygon]
-        else:
-            return self._lines
+        return [self._polygon] if self._roof else self._lines
 
     def _subtree_top(self, child):
         if isinstance(child, TreeSegmentWidget):
@@ -231,11 +228,7 @@ class TreeSegmentWidget(CanvasWidget):
             return  # [XX] ???
 
         # Which lines need to be redrawn?
-        if child is self._label:
-            need_update = self._subtrees
-        else:
-            need_update = [child]
-
+        need_update = self._subtrees if child is self._label else [child]
         if self._ordered and not self._managing:
             need_update = self._maintain_order(child)
 
@@ -488,7 +481,7 @@ def tree_to_treesegment(
         elif key[:4] == "loc_":
             loc_attribs[key[4:]] = value
         else:
-            raise ValueError("Bad attribute: %s" % key)
+            raise ValueError(f"Bad attribute: {key}")
     return _tree_to_treeseg(
         canvas,
         t,

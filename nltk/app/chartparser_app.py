@@ -100,14 +100,13 @@ class EdgeList(ColorizedList):
         )
 
     def _item_repr(self, item):
-        contents = []
-        contents.append(("%s\t" % item.lhs(), "nonterminal"))
+        contents = [("%s\t" % item.lhs(), "nonterminal")]
         contents.append((self.ARROW, "arrow"))
         for i, elt in enumerate(item.rhs()):
             if i == item.dot():
                 contents.append((" *", "dot"))
             if isinstance(elt, Nonterminal):
-                contents.append((" %s" % elt.symbol(), "nonterminal"))
+                contents.append((f" {elt.symbol()}", "nonterminal"))
             else:
                 contents.append((" %r" % elt, "terminal"))
         if item.is_complete():
@@ -200,7 +199,7 @@ class ChartMatrixView:
 
         # Count the edges in each cell
         N = len(self._cells)
-        cell_edges = [[0 for i in range(N)] for j in range(N)]
+        cell_edges = [[0 for _ in range(N)] for _ in range(N)]
         for edge in self._chart:
             cell_edges[edge.start()][edge.end()] += 1
 
@@ -624,7 +623,6 @@ class ChartComparer:
 
     def mainloop(self, *args, **kwargs):
         return
-        self._root.mainloop(*args, **kwargs)
 
     # ////////////////////////////////////////////////////////////
     # Initialization
@@ -902,31 +900,29 @@ class ChartComparer:
 
     def _checkcompat(self):
         if (
-            self._left_chart.tokens() != self._right_chart.tokens()
-            or self._left_chart.property_names() != self._right_chart.property_names()
-            or self._left_chart == self._emptychart
-            or self._right_chart == self._emptychart
+            self._left_chart.tokens() == self._right_chart.tokens()
+            and self._left_chart.property_names()
+            == self._right_chart.property_names()
+            and self._left_chart != self._emptychart
+            and self._right_chart != self._emptychart
         ):
-            # Clear & inactivate the output chart.
-            self._out_chart = self._emptychart
-            self._out_matrix.set_chart(self._out_chart)
-            self._out_matrix.inactivate()
-            self._out_label["text"] = "Output"
-            # Issue some other warning?
-            return False
-        else:
             return True
+        # Clear & inactivate the output chart.
+        self._out_chart = self._emptychart
+        self._out_matrix.set_chart(self._out_chart)
+        self._out_matrix.inactivate()
+        self._out_label["text"] = "Output"
+        # Issue some other warning?
+        return False
 
     def _update(self, operator, out_chart):
         self._operator = operator
         self._op_label["text"] = self._OPSYMBOL[operator]
         self._out_chart = out_chart
         self._out_matrix.set_chart(out_chart)
-        self._out_label["text"] = "{} {} {}".format(
-            self._left_name,
-            self._operator,
-            self._right_name,
-        )
+        self._out_label[
+            "text"
+        ] = f"{self._left_name} {self._operator} {self._right_name}"
 
     def _clear_out_chart(self):
         self._out_chart = self._emptychart
@@ -1183,12 +1179,12 @@ class ChartView:
             self._grow()
             self.draw()
             self.erase_tree()
-            self._resize()
         else:
             for edge in self._chart:
                 if edge not in self._edgetags:
                     self._add_edge(edge)
-            self._resize()
+
+        self._resize()
 
     def _edge_conflict(self, edge, lvl):
         """
@@ -1281,11 +1277,15 @@ class ChartView:
         self._draw_edge(edge, lvl)
 
     def view_edge(self, edge):
-        level = None
-        for i in range(len(self._edgelevels)):
-            if edge in self._edgelevels[i]:
-                level = i
-                break
+        level = next(
+            (
+                i
+                for i in range(len(self._edgelevels))
+                if edge in self._edgelevels[i]
+            ),
+            None,
+        )
+
         if level is None:
             return
         # Try to view the new edge..
@@ -1472,7 +1472,7 @@ class ChartView:
         c3 = self._chart_canvas
         margin = ChartView._MARGIN
         self._loclines = []
-        for i in range(0, self._chart.num_leaves() + 1):
+        for i in range(self._chart.num_leaves() + 1):
             x = i * self._unitsize + margin
 
             if c1:
@@ -1536,9 +1536,9 @@ class ChartView:
         self._treetoks_index = 0
 
     def draw_tree(self, edge=None):
-        if edge is None and self._treetoks_edge is None:
-            return
         if edge is None:
+            if self._treetoks_edge is None:
+                return
             edge = self._treetoks_edge
 
         # If it's a new edge, then get a new list of treetoks.
@@ -2281,7 +2281,6 @@ class ChartParserApp:
             self._cp.set_chart(chart)
         except Exception as e:
             raise
-            showerror("Error Loading Chart", "Unable to open file: %r" % filename)
 
     def save_chart(self, *args):
         "Save a chart to a pickle file"
@@ -2295,7 +2294,6 @@ class ChartParserApp:
                 pickle.dump(self._chart, outfile)
         except Exception as e:
             raise
-            showerror("Error Saving Chart", "Unable to open file: %r" % filename)
 
     def load_grammar(self, *args):
         "Load a grammar from a pickle file"
@@ -2543,7 +2541,7 @@ def app():
 
     print("grammar= (")
     for rule in grammar.productions():
-        print(("    ", repr(rule) + ","))
+        print(("    ", f"{repr(rule)},"))
     print(")")
     print("tokens = %r" % tokens)
     print('Calling "ChartParserApp(grammar, tokens)"...')

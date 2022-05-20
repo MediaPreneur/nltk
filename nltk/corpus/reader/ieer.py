@@ -89,13 +89,9 @@ class IEERCorpusReader(CorpusReader):
 
     def _parse(self, doc):
         val = nltk.chunk.ieerstr2tree(doc, root_label="DOCUMENT")
-        if isinstance(val, dict):
-            return IEERDocument(**val)
-        else:
-            return IEERDocument(val)
+        return IEERDocument(**val) if isinstance(val, dict) else IEERDocument(val)
 
     def _read_block(self, stream):
-        out = []
         # Skip any preamble.
         while True:
             line = stream.readline()
@@ -103,7 +99,7 @@ class IEERCorpusReader(CorpusReader):
                 break
             if line.strip() == "<DOC>":
                 break
-        out.append(line)
+        out = [line]
         # Read the document
         while True:
             line = stream.readline()

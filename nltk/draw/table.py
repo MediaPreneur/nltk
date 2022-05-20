@@ -392,10 +392,7 @@ class MultiListbox(Frame):
         cell values, one for each column in the row.
         """
         values = [lb.get(first, last) for lb in self._listboxes]
-        if last:
-            return [tuple(row) for row in zip(*values)]
-        else:
-            return tuple(values)
+        return [tuple(row) for row in zip(*values)] if last else tuple(values)
 
     def bbox(self, row, col):
         """
@@ -666,10 +663,7 @@ class Table:
         self._column_name_to_index = {c: i for (i, c) in enumerate(column_names)}
 
         # Make a copy of the rows & check that it's valid.
-        if rows is None:
-            self._rows = []
-        else:
-            self._rows = [[v for v in row] for row in rows]
+        self._rows = [] if rows is None else [list(row) for row in rows]
         for row in self._rows:
             self._checkrow(row)
 
@@ -689,7 +683,7 @@ class Table:
         # Set up sorting
         self._sortkey = None
         if click_to_sort:
-            for i, l in enumerate(self._mlb.column_labels):
+            for l in self._mlb.column_labels:
                 l.bind("<Button-1>", self._sort)
 
         # Fill in our multi-list box.
@@ -931,11 +925,7 @@ class Table:
         no row is selected.  To get the row value itself, use
         ``table[table.selected_row()]``.
         """
-        sel = self._mlb.curselection()
-        if sel:
-            return int(sel[0])
-        else:
-            return None
+        return int(sel[0]) if (sel := self._mlb.curselection()) else None
 
     def select(self, index=None, delta=None, see=True):
         """:see: ``MultiListbox.select()``"""
@@ -991,15 +981,9 @@ class Table:
         that column."""
         column_index = event.widget.column_index
 
-        # If they click on the far-left of far-right of a column's
-        # label, then resize rather than sorting.
-        if self._mlb._resize_column(event):
-            return "continue"
-
-        # Otherwise, sort.
-        else:
+        if not self._mlb._resize_column(event):
             self.sort_by(column_index)
-            return "continue"
+        return "continue"
 
     # /////////////////////////////////////////////////////////////////
     # { Table Drawing Helpers
@@ -1138,8 +1122,9 @@ def demo():
         root,
         "Word Synset Hypernym Hyponym".split(),
         column_weights=[0, 1, 1, 1],
-        reprfunc=(lambda i, j, s: "  %s" % s),
+        reprfunc=lambda i, j, s: f"  {s}",
     )
+
     table.pack(expand=True, fill="both")
 
     from nltk.corpus import brown, wordnet

@@ -257,14 +257,14 @@ class CollocationsView:
         self.after = self.top.after(POLL_INTERVAL, self._poll)
 
     def handle_error_loading_corpus(self, event):
-        self.status["text"] = "Error in loading " + self.var.get()
+        self.status["text"] = f"Error in loading {self.var.get()}"
         self.unfreeze_editable()
         self.clear_results_box()
         self.freeze_editable()
         self.reset_current_page()
 
     def handle_corpus_loaded(self, event):
-        self.status["text"] = self.var.get() + " is loaded"
+        self.status["text"] = f"{self.var.get()} is loaded"
         self.unfreeze_editable()
         self.clear_results_box()
         self.reset_current_page()
@@ -295,7 +295,7 @@ class CollocationsView:
 
     def load_corpus(self, selection):
         if self.model.selected_corpus != selection:
-            self.status["text"] = "Loading " + selection + "..."
+            self.status["text"] = f"Loading {selection}..."
             self.freeze_editable()
             self.model.load_corpus(selection)
 
@@ -328,10 +328,7 @@ class CollocationsView:
         self.set_paging_button_states()
 
     def set_paging_button_states(self):
-        if self.current_page == -1 or self.current_page == 0:
-            self.prev["state"] = "disabled"
-        else:
-            self.prev["state"] = "normal"
+        self.prev["state"] = "disabled" if self.current_page in [-1, 0] else "normal"
         if self.model.is_last_page(self.current_page):
             self.next["state"] = "disabled"
         else:
@@ -339,10 +336,8 @@ class CollocationsView:
 
     def write_results(self, results):
         self.results_box["state"] = "normal"
-        row = 1
-        for each in results:
-            self.results_box.insert(str(row) + ".0", each[0] + " " + each[1] + "\n")
-            row += 1
+        for row, each in enumerate(results, start=1):
+            self.results_box.insert(f"{str(row)}.0", f"{each[0]} {each[1]}" + "\n")
         self.results_box["state"] = "disabled"
 
 
@@ -368,8 +363,7 @@ class CollocationsModel:
         self.reset_results()
 
     def non_default_corpora(self):
-        copy = []
-        copy.extend(list(self.CORPORA.keys()))
+        copy = list(list(self.CORPORA.keys()))
         copy.remove(self.DEFAULT_CORPUS)
         copy.sort()
         return copy
@@ -383,7 +377,7 @@ class CollocationsModel:
 
     def next(self, page):
         if (len(self.result_pages) - 1) < page:
-            for i in range(page - (len(self.result_pages) - 1)):
+            for _ in range(page - (len(self.result_pages) - 1)):
                 self.result_pages.append(
                     self.collocations[
                         self.results_returned : self.results_returned
@@ -394,9 +388,7 @@ class CollocationsModel:
         return self.result_pages[page]
 
     def prev(self, page):
-        if page == -1:
-            return []
-        return self.result_pages[page]
+        return [] if page == -1 else self.result_pages[page]
 
     class LoadCorpus(threading.Thread):
         def __init__(self, name, model):

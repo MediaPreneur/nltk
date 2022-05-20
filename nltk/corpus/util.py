@@ -125,8 +125,7 @@ class LazyCorpusLoader:
 
     def __repr__(self):
         return "<{} in {!r} (not loaded yet)>".format(
-            self.__reader_cls.__name__,
-            ".../corpora/" + self.__name,
+            self.__reader_cls.__name__, f".../corpora/{self.__name}"
         )
 
     def _unload(self):

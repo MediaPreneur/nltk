@@ -101,9 +101,9 @@ class NombankCorpusReader(CorpusReader):
         baseform = baseform.replace("oneslashonezero", "1/10").replace(
             "1/10", "1-slash-10"
         )
-        framefile = "frames/%s.xml" % baseform
+        framefile = f"frames/{baseform}.xml"
         if framefile not in self.fileids():
-            raise ValueError("Frameset file for %s not found" % roleset_id)
+            raise ValueError(f"Frameset file for {roleset_id} not found")
 
         # n.b.: The encoding for XML fileids is specified by the file
         # itself; so we ignore self._encoding here.
@@ -119,9 +119,9 @@ class NombankCorpusReader(CorpusReader):
         :return: list of xml descriptions for rolesets.
         """
         if baseform is not None:
-            framefile = "frames/%s.xml" % baseform
+            framefile = f"frames/{baseform}.xml"
             if framefile not in self.fileids():
-                raise ValueError("Frameset file for %s not found" % baseform)
+                raise ValueError(f"Frameset file for {baseform} not found")
             framefiles = [framefile]
         else:
             framefiles = self.fileids()
@@ -150,9 +150,8 @@ class NombankCorpusReader(CorpusReader):
         block = []
 
         # Read 100 at a time.
-        for i in range(100):
-            line = stream.readline().strip()
-            if line:
+        for _ in range(100):
+            if line := stream.readline().strip():
                 inst = NombankInstance.parse(
                     line, self._parse_fileid_xform, self._parse_corpus
                 )
@@ -228,20 +227,11 @@ class NombankInstance:
         return f"{r}.{self.sensenumber}"
 
     def __repr__(self):
-        return "<NombankInstance: {}, sent {}, word {}>".format(
-            self.fileid,
-            self.sentnum,
-            self.wordnum,
-        )
+        return f"<NombankInstance: {self.fileid}, sent {self.sentnum}, word {self.wordnum}>"
 
     def __str__(self):
-        s = "{} {} {} {} {}".format(
-            self.fileid,
-            self.sentnum,
-            self.wordnum,
-            self.baseform,
-            self.sensenumber,
-        )
+        s = f"{self.fileid} {self.sentnum} {self.wordnum} {self.baseform} {self.sensenumber}"
+
         items = self.arguments + ((self.predicate, "rel"),)
         for (argloc, argid) in sorted(items):
             s += f" {argloc}-{argid}"
@@ -336,10 +326,10 @@ class NombankChainTreePointer(NombankPointer):
            ``NombankTreePointer`` pointers."""
 
     def __str__(self):
-        return "*".join("%s" % p for p in self.pieces)
+        return "*".join(f"{p}" for p in self.pieces)
 
     def __repr__(self):
-        return "<NombankChainTreePointer: %s>" % self
+        return f"<NombankChainTreePointer: {self}>"
 
     def select(self, tree):
         if tree is None:
@@ -354,10 +344,10 @@ class NombankSplitTreePointer(NombankPointer):
            all ``NombankTreePointer`` pointers."""
 
     def __str__(self):
-        return ",".join("%s" % p for p in self.pieces)
+        return ",".join(f"{p}" for p in self.pieces)
 
     def __repr__(self):
-        return "<NombankSplitTreePointer: %s>" % self
+        return f"<NombankSplitTreePointer: {self}>"
 
     def select(self, tree):
         if tree is None:
@@ -457,10 +447,8 @@ class NombankTreePointer(NombankPointer):
                     # End of node's child list: pop up a level.
                     stack.pop()
                     treepos.pop()
-            # word node:
             else:
                 if wordnum == self.wordnum:
                     return tuple(treepos[: len(treepos) - self.height - 1])
-                else:
-                    wordnum += 1
-                    stack.pop()
+                wordnum += 1
+                stack.pop()

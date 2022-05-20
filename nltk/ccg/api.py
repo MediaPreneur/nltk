@@ -134,15 +134,13 @@ class CCGVar(AbstractCCGCategory):
         """If the variable can be replaced with other
         a substitution is returned.
         """
-        if other.is_primitive() or not self._prim_only:
-            return [(self, other)]
-        return None
+        return [(self, other)] if other.is_primitive() or not self._prim_only else None
 
     def id(self):
         return self._id
 
     def __str__(self):
-        return "_var" + str(self._id)
+        return f"_var{str(self._id)}"
 
 
 @total_ordering
@@ -236,7 +234,7 @@ class Direction:
     def __str__(self):
         r_str = ""
         for r in self._restrs:
-            r_str = r_str + "%s" % r
+            r_str = r_str + f"{r}"
         return f"{self._dir}{r_str}"
 
     # The negation operator reverses the direction of the application
@@ -287,16 +285,16 @@ class PrimitiveCategory(AbstractCCGCategory):
         if other.is_var():
             return [(other, self)]
         if other.categ() == self.categ():
-            for restr in self._restrs:
-                if restr not in other.restrs():
-                    return None
-            return []
+            return next(
+                (None for restr in self._restrs if restr not in other.restrs()), []
+            )
+
         return None
 
     def __str__(self):
         if self._restrs == []:
-            return "%s" % self._categ
-        restrictions = "[%s]" % ",".join(repr(r) for r in self._restrs)
+            return f"{self._categ}"
+        restrictions = f'[{",".join((repr(r) for r in self._restrs))}]'
         return f"{self._categ}{restrictions}"
 
 

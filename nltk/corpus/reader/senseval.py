@@ -83,7 +83,7 @@ class SensevalCorpusView(StreamBackedCorpusView):
         while True:
             line = stream.readline()
             if line == "":
-                assert instance_lines == []
+                assert not instance_lines
                 return []
 
             # Start of a lexical element?
@@ -91,7 +91,7 @@ class SensevalCorpusView(StreamBackedCorpusView):
                 lexelt_num += 1
                 m = re.search("item=(\"[^\"]+\"|'[^']+')", line)
                 assert m is not None  # <lexelt> has no 'item=...'
-                lexelt = m.group(1)[1:-1]
+                lexelt = m[1][1:-1]
                 if lexelt_num < len(self._lexelts):
                     assert lexelt == self._lexelts[lexelt_num]
                 else:
@@ -100,7 +100,7 @@ class SensevalCorpusView(StreamBackedCorpusView):
 
             # Start of an instance?
             if line.lstrip().startswith("<instance"):
-                assert instance_lines == []
+                assert not instance_lines
                 in_instance = True
 
             # Body of an instance?
@@ -145,16 +145,13 @@ class SensevalCorpusView(StreamBackedCorpusView):
                             assert False, "expected CDATA or wf in <head>"
                     elif cword.tag == "wf":
                         context.append((cword.text, cword.attrib["pos"]))
-                    elif cword.tag == "s":
-                        pass  # Sentence boundary marker.
-
-                    else:
+                    elif cword.tag != "s":
                         print("ACK", cword.tag)
                         assert False, "expected CDATA or <wf> or <head>"
                     if cword.tail:
                         context += self._word_tokenizer.tokenize(cword.tail)
             else:
-                assert False, "unexpected tag %s" % child.tag
+                assert False, f"unexpected tag {child.tag}"
         return SensevalInstance(lexelt, position, context, senses)
 
 

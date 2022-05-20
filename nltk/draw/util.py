@@ -456,7 +456,7 @@ class CanvasWidget(metaclass=ABCMeta):
         :return: a string representation of this canvas widget.
         :rtype: str
         """
-        return "<%s>" % self.__class__.__name__
+        return f"<{self.__class__.__name__}>"
 
     def hide(self):
         """
@@ -881,7 +881,7 @@ class SymbolWidget(TextWidget):
         :param symbol: The name of the symbol to display.
         """
         if symbol not in SymbolWidget.SYMBOLS:
-            raise ValueError("Unknown symbol: %s" % symbol)
+            raise ValueError(f"Unknown symbol: {symbol}")
         self._symbol = symbol
         self.set_text(SymbolWidget.SYMBOLS[symbol])
 
@@ -1068,10 +1068,7 @@ class OvalWidget(AbstractContainerWidget):
         self._oval = canvas.create_oval(1, 1, 1, 1)
         self._circle = attribs.pop("circle", False)
         self._double = attribs.pop("double", False)
-        if self._double:
-            self._oval2 = canvas.create_oval(1, 1, 1, 1)
-        else:
-            self._oval2 = None
+        self._oval2 = canvas.create_oval(1, 1, 1, 1) if self._double else None
         canvas.tag_lower(self._oval)
         AbstractContainerWidget.__init__(self, canvas, child, **attribs)
 
@@ -1153,10 +1150,7 @@ class OvalWidget(AbstractContainerWidget):
             )
 
     def _tags(self):
-        if self._oval2 is None:
-            return [self._oval]
-        else:
-            return [self._oval, self._oval2]
+        return [self._oval] if self._oval2 is None else [self._oval, self._oval2]
 
 
 class ParenWidget(AbstractContainerWidget):
@@ -1391,7 +1385,7 @@ class SequenceWidget(CanvasWidget):
             x -= x2 - x1 + self._space
 
     def __repr__(self):
-        return "[Sequence: " + repr(self._children)[1:-1] + "]"
+        return f"[Sequence: {repr(self._children)[1:-1]}]"
 
     # Provide an alias for the child_widgets() member.
     children = CanvasWidget.child_widgets
@@ -1563,7 +1557,7 @@ class StackWidget(CanvasWidget):
             y -= y2 - y1 + self._space
 
     def __repr__(self):
-        return "[Stack: " + repr(self._children)[1:-1] + "]"
+        return f"[Stack: {repr(self._children)[1:-1]}]"
 
     # Provide an alias for the child_widgets() member.
     children = CanvasWidget.child_widgets
@@ -1813,7 +1807,7 @@ class CanvasFrame:
         canvas.pack(expand=1, fill="both", side="left")
 
         # Set initial scroll region.
-        scrollregion = "0 0 {} {}".format(canvas["width"], canvas["height"])
+        scrollregion = f'0 0 {canvas["width"]} {canvas["height"]}'
         canvas["scrollregion"] = scrollregion
 
         self._scrollwatcher = ScrollWatcherWidget(canvas)
@@ -2236,10 +2230,7 @@ class ColorizedList:
         """
         :return: A list of the items contained by this list.
         """
-        if index is None:
-            return self._items[:]
-        else:
-            return self._items[index]
+        return self._items[:] if index is None else self._items[index]
 
     def set(self, items):
         """
@@ -2404,10 +2395,7 @@ class ColorizedList:
     def _fire_callback(self, event, itemnum):
         if event not in self._callbacks:
             return
-        if 0 <= itemnum < len(self._items):
-            item = self._items[itemnum]
-        else:
-            item = None
+        item = self._items[itemnum] if 0 <= itemnum < len(self._items) else None
         for cb_func in list(self._callbacks[event].keys()):
             cb_func(item)
 
@@ -2418,7 +2406,7 @@ class ColorizedList:
         self._fire_callback("click%d" % event.num, itemnum)
 
     def _keypress(self, event):
-        if event.keysym == "Return" or event.keysym == "space":
+        if event.keysym in ["Return", "space"]:
             insert_point = self._textwidget.index("insert")
             itemnum = int(insert_point.split(".")[0]) - 1
             self._fire_callback(event.keysym.lower(), itemnum)
@@ -2434,7 +2422,7 @@ class ColorizedList:
         else:
             return "continue"
 
-        self._textwidget.mark_set("insert", "insert" + delta)
+        self._textwidget.mark_set("insert", f"insert{delta}")
         self._textwidget.see("insert")
         self._textwidget.tag_remove("sel", "1.0", "end+1char")
         self._textwidget.tag_add("sel", "insert linestart", "insert lineend")
@@ -2470,7 +2458,7 @@ class MutableOptionMenu(Menubutton):
             "anchor": "c",
             "highlightthickness": 2,
         }
-        kw.update(options)
+        kw |= options
         Widget.__init__(self, master, "menubutton", kw)
         self.widgetName = "tk_optionMenu"
         self._menu = Menu(self, name="menu", tearoff=0)
@@ -2504,9 +2492,7 @@ class MutableOptionMenu(Menubutton):
         self._menu.delete(i, i)
 
     def __getitem__(self, name):
-        if name == "menu":
-            return self.__menu
-        return Widget.__getitem__(self, name)
+        return self.__menu if name == "menu" else Widget.__getitem__(self, name)
 
     def destroy(self):
         """Destroy this widget and the associated menu."""

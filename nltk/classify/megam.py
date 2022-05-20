@@ -149,7 +149,7 @@ def _write_megam_features(vector, stream, bernoulli):
     for (fid, fval) in vector:
         if bernoulli:
             if fval == 1:
-                stream.write(" %s" % fid)
+                stream.write(f" {fid}")
             elif fval != 0:
                 raise ValueError(
                     "If bernoulli=True, then all" "features must be binary."
@@ -178,7 +178,4 @@ def call_megam(args):
         print(stderr)
         raise OSError("megam command failed!")
 
-    if isinstance(stdout, str):
-        return stdout
-    else:
-        return stdout.decode("utf-8")
+    return stdout if isinstance(stdout, str) else stdout.decode("utf-8")

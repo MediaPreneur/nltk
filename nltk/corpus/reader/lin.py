@@ -73,31 +73,26 @@ class LinThesaurusCorpusReader(CorpusReader):
         :return: If fileid is specified, just the score for the two ngrams; otherwise,
                  list of tuples of fileids and scores.
         """
-        # Entries don't contain themselves, so make sure similarity between item and itself is 1.0
         if ngram1 == ngram2:
-            if fileid:
-                return 1.0
-            else:
-                return [(fid, 1.0) for fid in self._fileids]
+            return 1.0 if fileid else [(fid, 1.0) for fid in self._fileids]
+        if fileid:
+            return (
+                self._thesaurus[fileid][ngram1][ngram2]
+                if ngram2 in self._thesaurus[fileid][ngram1]
+                else self._badscore
+            )
         else:
-            if fileid:
-                return (
-                    self._thesaurus[fileid][ngram1][ngram2]
-                    if ngram2 in self._thesaurus[fileid][ngram1]
-                    else self._badscore
-                )
-            else:
-                return [
+            return [
+                (
+                    fid,
                     (
-                        fid,
-                        (
-                            self._thesaurus[fid][ngram1][ngram2]
-                            if ngram2 in self._thesaurus[fid][ngram1]
-                            else self._badscore
-                        ),
-                    )
-                    for fid in self._fileids
-                ]
+                        self._thesaurus[fid][ngram1][ngram2]
+                        if ngram2 in self._thesaurus[fid][ngram1]
+                        else self._badscore
+                    ),
+                )
+                for fid in self._fileids
+            ]
 
     def scored_synonyms(self, ngram, fileid=None):
         """
@@ -163,16 +158,16 @@ def demo():
 
     word1 = "business"
     word2 = "enterprise"
-    print("Getting synonyms for " + word1)
+    print(f"Getting synonyms for {word1}")
     print(thes.synonyms(word1))
 
-    print("Getting scored synonyms for " + word1)
+    print(f"Getting scored synonyms for {word1}")
     print(thes.scored_synonyms(word1))
 
-    print("Getting synonyms from simN.lsp (noun subsection) for " + word1)
+    print(f"Getting synonyms from simN.lsp (noun subsection) for {word1}")
     print(thes.synonyms(word1, fileid="simN.lsp"))
 
-    print("Getting synonyms from simN.lsp (noun subsection) for " + word1)
+    print(f"Getting synonyms from simN.lsp (noun subsection) for {word1}")
     print(thes.synonyms(word1, fileid="simN.lsp"))
 
     print(f"Similarity score for {word1} and {word2}:")

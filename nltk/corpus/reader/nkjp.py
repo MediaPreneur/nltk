@@ -54,11 +54,12 @@ class NKJPCorpusReader(XMLCorpusReader):
         x.tagged_words(fileids=['WilkDom', '/home/USER/nltk_data/corpora/nkjp/WilkWilczy'], tags=['subst', 'comp'])
         """
         if isinstance(fileids, str):
-            XMLCorpusReader.__init__(self, root, fileids + ".*/header.xml")
+            XMLCorpusReader.__init__(self, root, f"{fileids}.*/header.xml")
         else:
             XMLCorpusReader.__init__(
-                self, root, [fileid + "/header.xml" for fileid in fileids]
+                self, root, [f"{fileid}/header.xml" for fileid in fileids]
             )
+
         self._paths = self.get_paths()
 
     def get_paths(self):
@@ -97,9 +98,7 @@ class NKJPCorpusReader(XMLCorpusReader):
         """
         Add root if necessary to specified fileid.
         """
-        if self.root in fileid:
-            return fileid
-        return self.root + fileid
+        return fileid if self.root in fileid else self.root + fileid
 
     @_parse_args
     def header(self, fileids=None, **kwargs):
@@ -186,7 +185,7 @@ class NKJPCorpus_Header_View(XMLCorpusView):
         header.xml files in NKJP corpus.
         """
         self.tagspec = ".*/sourceDesc$"
-        XMLCorpusView.__init__(self, filename + "header.xml", self.tagspec)
+        XMLCorpusView.__init__(self, f"{filename}header.xml", self.tagspec)
 
     def handle_query(self):
         self._open()
@@ -253,23 +252,22 @@ class XML_Tool:
 
     def build_preprocessed_file(self):
         try:
-            fr = open(self.read_file)
-            fw = self.write_file
-            line = " "
-            while len(line):
-                line = fr.readline()
-                x = re.split(r"nkjp:[^ ]* ", line)  # in all files
-                ret = " ".join(x)
-                x = re.split("<nkjp:paren>", ret)  # in ann_segmentation.xml
-                ret = " ".join(x)
-                x = re.split("</nkjp:paren>", ret)  # in ann_segmentation.xml
-                ret = " ".join(x)
-                x = re.split("<choice>", ret)  # in ann_segmentation.xml
-                ret = " ".join(x)
-                x = re.split("</choice>", ret)  # in ann_segmentation.xml
-                ret = " ".join(x)
-                fw.write(ret)
-            fr.close()
+            with open(self.read_file) as fr:
+                fw = self.write_file
+                line = " "
+                while len(line):
+                    line = fr.readline()
+                    x = re.split(r"nkjp:[^ ]* ", line)  # in all files
+                    ret = " ".join(x)
+                    x = re.split("<nkjp:paren>", ret)  # in ann_segmentation.xml
+                    ret = " ".join(x)
+                    x = re.split("</nkjp:paren>", ret)  # in ann_segmentation.xml
+                    ret = " ".join(x)
+                    x = re.split("<choice>", ret)  # in ann_segmentation.xml
+                    ret = " ".join(x)
+                    x = re.split("</choice>", ret)  # in ann_segmentation.xml
+                    ret = " ".join(x)
+                    fw.write(ret)
             fw.close()
             return self.write_file.name
         except Exception as e:
@@ -353,10 +351,7 @@ class NKJPCorpus_Segmentation_View(XMLCorpusView):
             raise Exception from e
 
     def handle_elt(self, elt, context):
-        ret = []
-        for seg in elt:
-            ret.append(seg.get("corresp"))
-        return ret
+        return [seg.get("corresp") for seg in elt]
 
 
 class NKJPCorpus_Text_View(XMLCorpusView):
@@ -371,7 +366,7 @@ class NKJPCorpus_Text_View(XMLCorpusView):
     def __init__(self, filename, **kwargs):
         self.mode = kwargs.pop("mode", 0)
         self.tagspec = ".*/div/ab"
-        self.segm_dict = dict()
+        self.segm_dict = {}
         # xml preprocessing
         self.xml_tool = XML_Tool(filename, "text.xml")
         # base class init
@@ -399,10 +394,8 @@ class NKJPCorpus_Text_View(XMLCorpusView):
             segm = XMLCorpusView.read_block(self, stream)
             if len(segm) == 0:
                 break
-            for part in segm:
-                txt.append(part)
-
-        return [" ".join([segm for segm in txt])]
+            txt.extend(iter(segm))
+        return [" ".join(list(txt))]
 
     def get_segm_id(self, elt):
         for attr in elt.attrib:
@@ -438,9 +431,7 @@ class NKJPCorpus_Morph_View(XMLCorpusView):
                 segm = XMLCorpusView.read_block(self, self._stream)
                 if len(segm) == 0:
                     break
-                for part in segm:
-                    if part is not None:
-                        words.append(part)
+                words.extend(part for part in segm if part is not None)
             self.close()
             self.xml_tool.remove_preprocessed_file()
             return words

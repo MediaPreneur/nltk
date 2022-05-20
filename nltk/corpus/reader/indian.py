@@ -87,7 +87,4 @@ class IndianCorpusView(StreamBackedCorpusView):
             sent = [(w, self._tag_mapping_function(t)) for (w, t) in sent]
         if not self._tagged:
             sent = [w for (w, t) in sent]
-        if self._group_by_sent:
-            return [sent]
-        else:
-            return sent
+        return [sent] if self._group_by_sent else sent

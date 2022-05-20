@@ -35,10 +35,7 @@ class ClusterI(metaclass=ABCMeta):
         Returns the likelihood (a float) of the token having the
         corresponding cluster.
         """
-        if self.classify(vector) == label:
-            return 1.0
-        else:
-            return 0.0
+        return 1.0 if self.classify(vector) == label else 0.0
 
     def classification_probdist(self, vector):
         """

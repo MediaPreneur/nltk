@@ -92,20 +92,14 @@ class RTEPair:
             self.value = norm(pair.attrib["entailment"])
         else:
             self.value = value
-        if "task" in pair.attrib:
-            self.task = pair.attrib["task"]
-        else:
-            self.task = task
-        if "length" in pair.attrib:
-            self.length = pair.attrib["length"]
-        else:
-            self.length = length
+        self.task = pair.attrib["task"] if "task" in pair.attrib else task
+        self.length = pair.attrib["length"] if "length" in pair.attrib else length
 
     def __repr__(self):
         if self.challenge:
             return f"<RTEPair: gid={self.challenge}-{self.id}>"
         else:
-            return "<RTEPair: id=%s>" % self.id
+            return f"<RTEPair: id={self.id}>"
 
 
 class RTECorpusReader(XMLCorpusReader):

@@ -177,10 +177,7 @@ def get_unique_counter_from_url(sp):
     null.
     """
     pos = sp.rfind("%23")
-    if pos != -1:
-        return int(sp[(pos + 3) :])
-    else:
-        return None
+    return int(sp[(pos + 3) :]) if pos != -1 else None
 
 
 def wnb(port=8000, runBrowser=True, logfilename=None):
@@ -226,7 +223,7 @@ def wnb(port=8000, runBrowser=True, logfilename=None):
         logfile = None
 
     # Compute URL and start web browser
-    url = "http://localhost:" + str(port)
+    url = f"http://localhost:{str(port)}"
 
     server_ready = None
     browser_thread = None
@@ -304,10 +301,7 @@ def _pos_match(pos_tuple):
     for n, x in enumerate(pos_tuple):
         if x is not None:
             break
-    for pt in _pos_tuples():
-        if pt[n] == pos_tuple[n]:
-            return pt
-    return None
+    return next((pt for pt in _pos_tuples() if pt[n] == pos_tuple[n]), None)
 
 
 HYPONYM = 0
@@ -344,10 +338,7 @@ INDIRECT_HYPERNYMS = 26
 
 def lemma_property(word, synset, func):
     def flattern(l):
-        if l == []:
-            return []
-        else:
-            return l[0] + flattern(l[1:])
+        return [] if l == [] else l[0] + flattern(l[1:])
 
     return flattern([func(l) for l in synset.lemmas if l.name == word])
 
@@ -435,7 +426,7 @@ def get_relations_data(word, synset):
         )
         # Derived from adjective - not supported by corpus
     else:
-        raise TypeError("Unhandles synset POS type: " + str(synset.pos()))
+        raise TypeError(f"Unhandles synset POS type: {str(synset.pos())}")
 
 
 html_header = """
@@ -480,11 +471,11 @@ synsets.</li>
 
 
 def _bold(txt):
-    return "<b>%s</b>" % txt
+    return f"<b>{txt}</b>"
 
 
 def _center(txt):
-    return "<center>%s</center>" % txt
+    return f"<center>{txt}</center>"
 
 
 def _hlev(n, txt):
@@ -492,11 +483,11 @@ def _hlev(n, txt):
 
 
 def _italic(txt):
-    return "<i>%s</i>" % txt
+    return f"<i>{txt}</i>"
 
 
 def _li(txt):
-    return "<li>%s</li>" % txt
+    return f"<li>{txt}</li>"
 
 
 def pg(word, body):
@@ -515,7 +506,7 @@ def pg(word, body):
 
 
 def _ul(txt):
-    return "<ul>" + txt + "</ul>"
+    return f"<ul>{txt}</ul>"
 
 
 def _abbc(txt):
@@ -568,9 +559,8 @@ def _collect_one_synset(word, synset, synset_relations):
         w = w.replace("_", " ")
         if w.lower() == word:
             return _bold(w)
-        else:
-            ref = Reference(w)
-            return make_lookup_link(ref, w)
+        ref = Reference(w)
+        return make_lookup_link(ref, w)
 
     s += ", ".join(format_lemma(l.name()) for l in synset.lemmas())
 
@@ -624,8 +614,7 @@ def _synset_relations(word, synset, synset_relations):
             )
         else:
             raise TypeError(
-                "r must be a synset, lemma or list, it was: type(r) = %s, r = %s"
-                % (type(r), r)
+                f"r must be a synset, lemma or list, it was: type(r) = {type(r)}, r = {r}"
             )
 
     def make_synset_html(db_name, disp_name, rels):
@@ -766,7 +755,7 @@ def page_from_reference(href):
     pos_forms = defaultdict(list)
     words = word.split(",")
     words = [w for w in [w.strip().lower().replace(" ", "_") for w in words] if w != ""]
-    if len(words) == 0:
+    if not words:
         # No words were found.
         return "", "Please specify a word to search for."
 
@@ -912,11 +901,7 @@ def get_static_index_page(with_shutdown):
 </frameset>
 </HTML>
 """
-    if with_shutdown:
-        upper_link = "upper.html"
-    else:
-        upper_link = "upper_2.html"
-
+    upper_link = "upper.html" if with_shutdown else "upper_2.html"
     return template % upper_link
 
 
@@ -976,13 +961,13 @@ def app():
     help_mode = False
     logfilename = None
     for (opt, value) in opts:
-        if (opt == "-l") or (opt == "--logfile"):
+        if opt in ["-l", "--logfile"]:
             logfilename = str(value)
-        elif (opt == "-p") or (opt == "--port"):
+        elif opt in ["-p", "--port"]:
             port = int(value)
-        elif (opt == "-s") or (opt == "--server-mode"):
+        elif opt in ["-s", "--server-mode"]:
             server_mode = True
-        elif (opt == "-h") or (opt == "--help"):
+        elif opt in ["-h", "--help"]:
             help_mode = True
 
     if help_mode:

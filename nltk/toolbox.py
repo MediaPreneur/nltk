@@ -305,19 +305,20 @@ def to_sfm_string(tree, encoding=None, errors="strict", unicode_fields=None):
             mkr = field.tag
             value = field.text
             if encoding is not None:
-                if unicode_fields is not None and mkr in unicode_fields:
-                    cur_encoding = "utf8"
-                else:
-                    cur_encoding = encoding
+                cur_encoding = (
+                    "utf8"
+                    if unicode_fields is not None and mkr in unicode_fields
+                    else encoding
+                )
+
                 if re.search(_is_value, value):
                     l.append((f"\\{mkr} {value}\n").encode(cur_encoding, errors))
                 else:
                     l.append((f"\\{mkr}{value}\n").encode(cur_encoding, errors))
+            elif re.search(_is_value, value):
+                l.append(f"\\{mkr} {value}\n")
             else:
-                if re.search(_is_value, value):
-                    l.append(f"\\{mkr} {value}\n")
-                else:
-                    l.append(f"\\{mkr}{value}\n")
+                l.append(f"\\{mkr}{value}\n")
     return "".join(l[1:])
 
 
@@ -363,7 +364,7 @@ class ToolboxSettings(StandardFormat):
 
 def to_settings_string(tree, encoding=None, errors="strict", unicode_fields=None):
     # write XML to file
-    l = list()
+    l = []
     _to_settings_string(
         tree.getroot(),
         l,
@@ -401,7 +402,7 @@ def remove_blanks(elem):
     :param elem: toolbox data in an elementtree structure
     :type elem: ElementTree._ElementInterface
     """
-    out = list()
+    out = []
     for child in elem:
         remove_blanks(child)
         if child.text or len(child) > 0:
@@ -434,7 +435,7 @@ def sort_fields(elem, field_orders):
     :param field_orders: order of fields for each type of element and subelement
     :type field_orders: dict(tuple)
     """
-    order_dicts = dict()
+    order_dicts = {}
     for field, order in field_orders.items():
         order_dicts[field] = order_key = dict()
         for i, subfield in enumerate(order):
@@ -478,14 +479,13 @@ def add_blank_lines(tree, blanks_before, blanks_between):
         last_elem = None
         for elem in tree:
             tag = elem.tag
-            if last_elem is not None and last_elem.tag != tag:
-                if tag in before and last_elem is not None:
-                    e = last_elem.getiterator()[-1]
-                    e.text = (e.text or "") + "\n"
-            else:
+            if last_elem is None or last_elem.tag == tag:
                 if tag in between:
                     e = last_elem.getiterator()[-1]
                     e.text = (e.text or "") + "\n"
+            elif tag in before:
+                e = last_elem.getiterator()[-1]
+                e.text = (e.text or "") + "\n"
             if len(elem):
                 add_blank_lines(elem, blanks_before, blanks_between)
             last_elem = elem

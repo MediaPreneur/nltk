@@ -170,11 +170,9 @@ class XMLCorpusView(StreamBackedCorpusView):
             return "utf-32-le"
         if s.startswith(codecs.BOM_UTF8):
             return "utf-8"
-        m = re.match(rb'\s*<\?xml\b.*\bencoding="([^"]+)"', s)
-        if m:
+        if m := re.match(rb'\s*<\?xml\b.*\bencoding="([^"]+)"', s):
             return m.group(1).decode()
-        m = re.match(rb"\s*<\?xml\b.*\bencoding='([^']+)'", s)
-        if m:
+        if m := re.match(rb"\s*<\?xml\b.*\bencoding='([^']+)'", s):
             return m.group(1).decode()
         # No encoding found -- what should the default be?
         return "utf-8"
@@ -275,14 +273,15 @@ class XMLCorpusView(StreamBackedCorpusView):
             # If appropriate, backtrack to the most recent '<'
             # character.
             last_open_bracket = fragment.rfind("<")
-            if last_open_bracket > 0:
-                if self._VALID_XML_RE.match(fragment[:last_open_bracket]):
-                    if isinstance(stream, SeekableUnicodeStreamReader):
-                        stream.seek(startpos)
-                        stream.char_seek_forward(last_open_bracket)
-                    else:
-                        stream.seek(-(len(fragment) - last_open_bracket), 1)
-                    return fragment[:last_open_bracket]
+            if last_open_bracket > 0 and self._VALID_XML_RE.match(
+                fragment[:last_open_bracket]
+            ):
+                if isinstance(stream, SeekableUnicodeStreamReader):
+                    stream.seek(startpos)
+                    stream.char_seek_forward(last_open_bracket)
+                else:
+                    stream.seek(-(len(fragment) - last_open_bracket), 1)
+                return fragment[:last_open_bracket]
 
             # Otherwise, read another block. (i.e., return to the
             # top of the loop.)
@@ -308,12 +307,11 @@ class XMLCorpusView(StreamBackedCorpusView):
         elt_depth = None  # what context depth
         elt_text = ""
 
-        while elts == [] or elt_start is not None:
+        while not elts or elt_start is not None:
             if isinstance(stream, SeekableUnicodeStreamReader):
                 startpos = stream.tell()
             xml_fragment = self._read_xml_fragment(stream)
 
-            # End of file.
             if not xml_fragment:
                 if elt_start is None:
                     break
@@ -330,16 +328,15 @@ class XMLCorpusView(StreamBackedCorpusView):
                     # Keep context up-to-date.
                     context.append(name)
                     # Is this one of the elts we're looking for?
-                    if elt_start is None:
-                        if re.match(tagspec, "/".join(context)):
-                            elt_start = piece.start()
-                            elt_depth = len(context)
+                    if elt_start is None and re.match(tagspec, "/".join(context)):
+                        elt_start = piece.start()
+                        elt_depth = len(context)
 
                 elif piece.group("END_TAG"):
                     name = self._XML_TAG_NAME.match(piece.group()).group(1)
                     # sanity checks:
                     if not context:
-                        raise ValueError("Unmatched tag </%s>" % name)
+                        raise ValueError(f"Unmatched tag </{name}>")
                     if name != context[-1]:
                         raise ValueError(f"Unmatched tag <{context[-1]}>...</{name}>")
                     # Is this the end of an element?
@@ -353,21 +350,13 @@ class XMLCorpusView(StreamBackedCorpusView):
 
                 elif piece.group("EMPTY_ELT_TAG"):
                     name = self._XML_TAG_NAME.match(piece.group()).group(1)
-                    if elt_start is None:
-                        if re.match(tagspec, "/".join(context) + "/" + name):
-                            elts.append((piece.group(), "/".join(context) + "/" + name))
+                    if elt_start is None and re.match(
+                        tagspec, "/".join(context) + "/" + name
+                    ):
+                        elts.append((piece.group(), "/".join(context) + "/" + name))
 
             if elt_start is not None:
-                # If we haven't found any elements yet, then keep
-                # looping until we do.
-                if elts == []:
-                    elt_text += xml_fragment[elt_start:]
-                    elt_start = 0
-
-                # If we've found at least one element, then try
-                # backtracking to the start of the element that we're
-                # inside of.
-                else:
+                if elts:
                     # take back the last start-tag, and return what
                     # we've gotten so far (elts is non-empty).
                     if self._DEBUG:
@@ -380,6 +369,10 @@ class XMLCorpusView(StreamBackedCorpusView):
                     context = context[: elt_depth - 1]
                     elt_start = elt_depth = None
                     elt_text = ""
+
+                else:
+                    elt_text += xml_fragment[elt_start:]
+                    elt_start = 0
 
         # Update the _tag_context dict.
         pos = stream.tell()

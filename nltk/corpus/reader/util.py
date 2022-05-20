@@ -237,7 +237,7 @@ class StreamBackedCorpusView(AbstractLazySequence):
         if self._len is None:
             # iterate_from() sets self._len when it reaches the end
             # of the file:
-            for tok in self.iterate_from(self._toknum[-1]):
+            for _ in self.iterate_from(self._toknum[-1]):
                 pass
         return self._len
 
@@ -304,10 +304,10 @@ class StreamBackedCorpusView(AbstractLazySequence):
             self._current_toknum = toknum
             self._current_blocknum = block_index
             tokens = self.read_block(self._stream)
-            assert isinstance(tokens, (tuple, list, AbstractLazySequence)), (
-                "block reader %s() should return list or tuple."
-                % self.read_block.__name__
-            )
+            assert isinstance(
+                tokens, (tuple, list, AbstractLazySequence)
+            ), f"block reader {self.read_block.__name__}() should return list or tuple."
+
             num_toks = len(tokens)
             new_filepos = self._stream.tell()
             assert (
@@ -343,8 +343,7 @@ class StreamBackedCorpusView(AbstractLazySequence):
             # Generate the tokens in this block (but skip any tokens
             # before start_tok).  Note that between yields, our state
             # may be modified.
-            for tok in tokens[max(0, start_tok - toknum) :]:
-                yield tok
+            yield from tokens[max(0, start_tok - toknum) :]
             # If we're at the end of the file, then we're done.
             assert new_filepos <= self._eofpos
             if new_filepos == self._eofpos:
@@ -398,7 +397,7 @@ class ConcatenatedCorpusView(AbstractLazySequence):
     def __len__(self):
         if len(self._offsets) <= len(self._pieces):
             # Iterate to the end of the corpus.
-            for tok in self.iterate_from(self._offsets[-1]):
+            for _ in self.iterate_from(self._offsets[-1]):
                 pass
 
         return self._offsets[-1]
@@ -521,7 +520,7 @@ class PickleCorpusView(StreamBackedCorpusView):
 
     def read_block(self, stream):
         result = []
-        for i in range(self.BLOCK_SIZE):
+        for _ in range(self.BLOCK_SIZE):
             try:
                 result.append(pickle.load(stream))
             except EOFError:
@@ -535,12 +534,11 @@ class PickleCorpusView(StreamBackedCorpusView):
         fileid.  (This method is called whenever a
         ``PickledCorpusView`` is garbage-collected.
         """
-        if getattr(self, "_delete_on_gc"):
-            if os.path.exists(self._fileid):
-                try:
-                    os.remove(self._fileid)
-                except OSError:
-                    pass
+        if getattr(self, "_delete_on_gc") and os.path.exists(self._fileid):
+            try:
+                os.remove(self._fileid)
+            except OSError:
+                pass
         self.__dict__.clear()  # make the garbage collector's job easier
 
     @classmethod
@@ -567,7 +565,7 @@ class PickleCorpusView(StreamBackedCorpusView):
             output_file.close()
             return PickleCorpusView(output_file_name, delete_on_gc)
         except OSError as e:
-            raise ValueError("Error while creating temp file: %s" % e) from e
+            raise ValueError(f"Error while creating temp file: {e}") from e
 
 
 ######################################################################
@@ -577,21 +575,21 @@ class PickleCorpusView(StreamBackedCorpusView):
 
 def read_whitespace_block(stream):
     toks = []
-    for i in range(20):  # Read 20 lines at a time.
+    for _ in range(20):
         toks.extend(stream.readline().split())
     return toks
 
 
 def read_wordpunct_block(stream):
     toks = []
-    for i in range(20):  # Read 20 lines at a time.
+    for _ in range(20):
         toks.extend(wordpunct_tokenize(stream.readline()))
     return toks
 
 
 def read_line_block(stream):
     toks = []
-    for i in range(20):
+    for _ in range(20):
         line = stream.readline()
         if not line:
             return toks
@@ -604,17 +602,11 @@ def read_blankline_block(stream):
     while True:
         line = stream.readline()
         # End of file:
-        if not line:
-            if s:
-                return [s]
-            else:
-                return []
-        # Blank line:
-        elif line and not line.strip():
-            if s:
-                return [s]
-        # Other line:
-        else:
+        if not line and s or line and line and not line.strip() and s:
+            return [s]
+        elif not line:
+            return []
+        elif not line or not line or line.strip() or s:
             s += line
 
 
@@ -624,17 +616,11 @@ def read_alignedsent_block(stream):
         line = stream.readline()
         if line[0] == "=" or line[0] == "\n" or line[:2] == "\r\n":
             continue
-        # End of file:
         if not line:
-            if s:
-                return [s]
-            else:
-                return []
-        # Other line:
-        else:
-            s += line
-            if re.match(r"^\d+-\d+", line) is not None:
-                return [s]
+            return [s] if s else []
+        s += line
+        if re.match(r"^\d+-\d+", line) is not None:
+            return [s]
 
 
 def read_regexp_block(stream, start_re, end_re=None):
@@ -706,7 +692,7 @@ def read_sexpr_block(stream, block_size=16384, comment_char=None):
         # on adding BOMs to the beginning of encoded strings.)
 
     if comment_char:
-        COMMENT = re.compile("(?m)^%s.*$" % re.escape(comment_char))
+        COMMENT = re.compile(f"(?m)^{re.escape(comment_char)}.*$")
     while True:
         try:
             # If we're stripping comments, then make sure our block ends
@@ -730,16 +716,13 @@ def read_sexpr_block(stream, block_size=16384, comment_char=None):
             # Return the list of tokens we processed
             return tokens
         except ValueError as e:
-            if e.args[0] == "Block too small":
-                next_block = stream.read(block_size)
-                if next_block:
-                    block += next_block
-                    continue
-                else:
-                    # The file ended mid-sexpr -- return what we got.
-                    return [block.strip()]
-            else:
+            if e.args[0] != "Block too small":
                 raise
+            if next_block := stream.read(block_size):
+                block += next_block
+            else:
+                # The file ended mid-sexpr -- return what we got.
+                return [block.strip()]
 
 
 def _sub_space(m):
@@ -760,17 +743,7 @@ def _parse_sexpr_block(block):
         start = m.start()
 
         # Case 1: sexpr is not parenthesized.
-        if m.group() != "(":
-            m2 = re.compile(r"[\s(]").search(block, start)
-            if m2:
-                end = m2.start()
-            else:
-                if tokens:
-                    return tokens, end
-                raise ValueError("Block too small")
-
-        # Case 2: parenthesized sexpr.
-        else:
+        if m.group() == "(":
             nesting = 0
             for m in re.compile(r"[()]").finditer(block, start):
                 if m.group() == "(":
@@ -784,6 +757,13 @@ def _parse_sexpr_block(block):
                 if tokens:
                     return tokens, end
                 raise ValueError("Block too small")
+
+        elif m2 := re.compile(r"[\s(]").search(block, start):
+            end = m2.start()
+        elif tokens:
+            return tokens, end
+        else:
+            raise ValueError("Block too small")
 
         tokens.append(block[start:end])
 
@@ -811,12 +791,10 @@ def find_corpus_fileids(root, regexp):
         items = [name for name in fileids if re.match(regexp, name)]
         return sorted(items)
 
-    # Find fileids in a directory: use os.walk to search all (proper
-    # or symlinked) subdirectories, and match paths against the regexp.
     elif isinstance(root, FileSystemPathPointer):
         items = []
         for dirname, subdirs, fileids in os.walk(root.path):
-            prefix = "".join("%s/" % p for p in _path_from(root.path, dirname))
+            prefix = "".join(f"{p}/" for p in _path_from(root.path, dirname))
             items += [
                 prefix + fileid
                 for fileid in fileids
@@ -856,12 +834,7 @@ def tagged_treebank_para_block_reader(stream):
         if re.match(r"======+\s*$", line):
             if para.strip():
                 return [para]
-        # End of file:
         elif line == "":
-            if para.strip():
-                return [para]
-            else:
-                return []
-        # Content line:
+            return [para] if para.strip() else []
         else:
             para += line

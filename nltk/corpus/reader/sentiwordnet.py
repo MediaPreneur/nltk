@@ -74,26 +74,22 @@ class SentiWordNetCorpusReader(CorpusReader):
             if pos == "s":
                 pos = "a"
             synset = wn.synset_from_pos_and_offset(pos, offset)
-            return SentiSynset(pos_score, neg_score, synset)
         else:
             synset = wn.synset(vals[0])
             pos = synset.pos()
             if pos == "s":
                 pos = "a"
             offset = synset.offset()
-            if (pos, offset) in self._db:
-                pos_score, neg_score = self._db[(pos, offset)]
-                return SentiSynset(pos_score, neg_score, synset)
-            else:
+            if (pos, offset) not in self._db:
                 return None
+            pos_score, neg_score = self._db[(pos, offset)]
+        return SentiSynset(pos_score, neg_score, synset)
 
     def senti_synsets(self, string, pos=None):
         from nltk.corpus import wordnet as wn
 
-        sentis = []
         synset_list = wn.synsets(string, pos)
-        for synset in synset_list:
-            sentis.append(self.senti_synset(synset.name()))
+        sentis = [self.senti_synset(synset.name()) for synset in synset_list]
         sentis = filter(lambda x: x, sentis)
         return sentis
 
@@ -126,11 +122,11 @@ class SentiSynset:
     def __str__(self):
         """Prints just the Pos/Neg scores for now."""
         s = "<"
-        s += self.synset.name() + ": "
-        s += "PosScore=%s " % self._pos_score
-        s += "NegScore=%s" % self._neg_score
+        s += f"{self.synset.name()}: "
+        s += f"PosScore={self._pos_score} "
+        s += f"NegScore={self._neg_score}"
         s += ">"
         return s
 
     def __repr__(self):
-        return "Senti" + repr(self.synset)
+        return f"Senti{repr(self.synset)}"

@@ -53,10 +53,7 @@ class ContextIndex:
     def __init__(self, tokens, context_func=None, filter=None, key=lambda x: x):
         self._key = key
         self._tokens = tokens
-        if context_func:
-            self._context_func = context_func
-        else:
-            self._context_func = self._default_context
+        self._context_func = context_func or self._default_context
         if filter:
             tokens = [t for t in tokens if filter(t)]
         self._word_to_contexts = CFD(
@@ -83,11 +80,10 @@ class ContextIndex:
         word = self._key(word)
         word_contexts = set(self._word_to_contexts[word])
 
-        scores = {}
-        for w, w_contexts in self._word_to_contexts.items():
-            scores[w] = f_measure(word_contexts, set(w_contexts))
-
-        return scores
+        return {
+            w: f_measure(word_contexts, set(w_contexts))
+            for w, w_contexts in self._word_to_contexts.items()
+        }
 
     def similar_words(self, word, n=20):
         scores = defaultdict(int)
@@ -120,10 +116,9 @@ class ContextIndex:
             # nothing in common -- just return an empty freqdist.
             return FreqDist()
         else:
-            fd = FreqDist(
+            return FreqDist(
                 c for w in words for c in self._word_to_contexts[w] if c in common
             )
-            return fd
 
 
 class ConcordanceIndex:
@@ -188,11 +183,7 @@ class ConcordanceIndex:
 
         Provided with a list of words, these will be found as a phrase.
         """
-        if isinstance(word, list):
-            phrase = word
-        else:
-            phrase = [word]
-
+        phrase = word if isinstance(word, list) else [word]
         half_width = (width - len(" ".join(phrase)) - 2) // 2
         context = width // 4  # approx number of words of context
 
@@ -238,15 +229,13 @@ class ConcordanceIndex:
         :param save: The option to save the concordance.
         :type save: bool
         """
-        concordance_list = self.find_concordance(word, width=width)
-
-        if not concordance_list:
-            print("no matches")
-        else:
+        if concordance_list := self.find_concordance(word, width=width):
             lines = min(lines, len(concordance_list))
             print(f"Displaying {lines} of {len(concordance_list)} matches:")
-            for i, concordance_line in enumerate(concordance_list[:lines]):
+            for concordance_line in concordance_list[:lines]:
                 print(concordance_line.line)
+        else:
+            print("no matches")
 
 
 class TokenSearcher:
@@ -261,7 +250,7 @@ class TokenSearcher:
     """
 
     def __init__(self, tokens):
-        self._raw = "".join("<" + w + ">" for w in tokens)
+        self._raw = "".join(f"<{w}>" for w in tokens)
 
     def findall(self, regexp):
         """
@@ -456,8 +445,9 @@ class Text:
         """
 
         collocation_strings = [
-            w1 + " " + w2 for w1, w2 in self.collocation_list(num, window_size)
+            f"{w1} {w2}" for w1, w2 in self.collocation_list(num, window_size)
         ]
+
         print(tokenwrap(collocation_strings, separator="; "))
 
     def count(self, word):
@@ -503,8 +493,9 @@ class Text:
                 w
                 for w in wci.conditions()
                 for c in wci[w]
-                if c in contexts and not w == word
+                if c in contexts and w != word
             )
+
             words = [w for w, _ in fd.most_common(num)]
             print(tokenwrap(words))
         else:
@@ -528,13 +519,12 @@ class Text:
             )
 
         try:
-            fd = self._word_context_index.common_contexts(words, True)
-            if not fd:
-                print("No common contexts were found")
-            else:
+            if fd := self._word_context_index.common_contexts(words, True):
                 ranked_contexts = [w for w, _ in fd.most_common(num)]
-                print(tokenwrap(w1 + "_" + w2 for w1, w2 in ranked_contexts))
+                print(tokenwrap(f"{w1}_{w2}" for w1, w2 in ranked_contexts))
 
+            else:
+                print("No common contexts were found")
         except ValueError as e:
             print(e)
 
@@ -586,11 +576,9 @@ class Text:
 
         assert length > 0, "The `length` must be more than 0."
         while len(generated_tokens) < length:
-            for idx, token in enumerate(
-                self._trigram_model.generate(
+            for token in self._trigram_model.generate(
                     length, text_seed=text_seed, random_seed=random_seed
-                )
-            ):
+                ):
                 if token == "<s>":
                     continue
                 if token == "</s>":
@@ -681,10 +669,10 @@ class Text:
     # ////////////////////////////////////////////////////////////
 
     def __str__(self):
-        return "<Text: %s>" % self.name
+        return f"<Text: {self.name}>"
 
     def __repr__(self):
-        return "<Text: %s>" % self.name
+        return f"<Text: {self.name}>"
 
 
 # Prototype only; this approach will be slow to load

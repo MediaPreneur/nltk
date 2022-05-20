@@ -48,11 +48,10 @@ def config_weka(classpath=None):
         for path in searchpath:
             if os.path.exists(os.path.join(path, "weka.jar")):
                 _weka_classpath = os.path.join(path, "weka.jar")
-                version = _check_weka_version(_weka_classpath)
-                if version:
+                if version := _check_weka_version(_weka_classpath):
                     print(f"[Found Weka: {_weka_classpath} (version {version})]")
                 else:
-                    print("[Found Weka: %s]" % _weka_classpath)
+                    print(f"[Found Weka: {_weka_classpath}]")
                 _check_weka_version(_weka_classpath)
 
     if _weka_classpath is None:
@@ -69,13 +68,10 @@ def _check_weka_version(jar):
         zf = zipfile.ZipFile(jar)
     except (SystemExit, KeyboardInterrupt):
         raise
-    except:
-        return None
     try:
-        try:
-            return zf.read("weka/core/version.txt")
-        except KeyError:
-            return None
+        return zf.read("weka/core/version.txt")
+    except KeyError:
+        return None
     finally:
         zf.close()
 
@@ -223,15 +219,12 @@ class WekaClassifier(ClassifierI):
             elif classifier in cls._CLASSIFIER_CLASS.values():
                 javaclass = classifier
             else:
-                raise ValueError("Unknown classifier %s" % classifier)
+                raise ValueError(f"Unknown classifier {classifier}")
 
             # Train the weka model.
             cmd = [javaclass, "-d", model_filename, "-t", train_filename]
             cmd += list(options)
-            if quiet:
-                stdout = subprocess.PIPE
-            else:
-                stdout = None
+            stdout = subprocess.PIPE if quiet else None
             java(cmd, classpath=_weka_classpath, stdout=stdout)
 
             # Return the new classifier.
@@ -304,7 +297,7 @@ class ARFF_Formatter:
                     raise ValueError("Unsupported value type %r" % ftype)
 
                 if features.get(fname, ftype) != ftype:
-                    raise ValueError("Inconsistent type for %s" % fname)
+                    raise ValueError(f"Inconsistent type for {fname}")
                 features[fname] = ftype
         features = sorted(features.items())
 
@@ -352,7 +345,7 @@ class ARFF_Formatter:
         s = "\n@DATA\n"
         for (tok, label) in tokens:
             for fname, ftype in self._features:
-                s += "%s," % self._fmt_arff_val(tok.get(fname))
+                s += f"{self._fmt_arff_val(tok.get(fname))},"
             s += "%s\n" % self._fmt_arff_val(label)
 
         return s
@@ -361,9 +354,7 @@ class ARFF_Formatter:
         if fval is None:
             return "?"
         elif isinstance(fval, (bool, int)):
-            return "%s" % fval
-        elif isinstance(fval, float):
-            return "%r" % fval
+            return f"{fval}"
         else:
             return "%r" % fval
 

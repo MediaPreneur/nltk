@@ -69,12 +69,14 @@ class Token:
         semantics_str = ""
         if self._semantics is not None:
             semantics_str = " {" + str(self._semantics) + "}"
-        return "" + str(self._categ) + semantics_str
+        return f"{str(self._categ)}{semantics_str}"
 
     def __cmp__(self, other):
-        if not isinstance(other, Token):
-            return -1
-        return cmp((self._categ, self._semantics), other.categ(), other.semantics())
+        return (
+            cmp((self._categ, self._semantics), other.categ(), other.semantics())
+            if isinstance(other, Token)
+            else -1
+        )
 
 
 class CCGLexicon:
@@ -118,10 +120,10 @@ class CCGLexicon:
             first = True
             for cat in self._entries[ident]:
                 if not first:
-                    string = string + " | "
+                    string = f"{string} | "
                 else:
                     first = False
-                string = string + "%s" % cat
+                string = string + f"{cat}"
         return string
 
 
@@ -146,7 +148,7 @@ def matchBrackets(string):
             inside = inside + rest[0]
             rest = rest[1:]
     if rest.startswith(")"):
-        return (inside + ")", rest[1:])
+        return f"{inside})", rest[1:]
     raise AssertionError("Unmatched bracket in string '" + string + "'")
 
 
@@ -171,9 +173,7 @@ def parseSubscripts(subscr):
     """
     Parse the subscripts for a primitive category
     """
-    if subscr:
-        return subscr[1:-1].split(",")
-    return []
+    return subscr[1:-1].split(",") if subscr else []
 
 
 def parsePrimitiveCategory(chunks, primitives, families, var):
@@ -183,11 +183,10 @@ def parsePrimitiveCategory(chunks, primitives, families, var):
     If the primitive is the special category 'var', replace it with the
     correct `CCGVar`.
     """
-    if chunks[0] == "var":
-        if chunks[1] is None:
-            if var is None:
-                var = CCGVar()
-            return (var, var)
+    if chunks[0] == "var" and chunks[1] is None:
+        if var is None:
+            var = CCGVar()
+        return (var, var)
 
     catstr = chunks[0]
     if catstr in families:
@@ -223,7 +222,7 @@ def augParseCategory(line, primitives, families, var=None):
 
     while rest != "":
         app = APP_RE.match(rest).groups()
-        direction = parseApplication(app[0:3])
+        direction = parseApplication(app[:3])
         rest = app[3]
 
         (cat_string, rest) = nextCategory(rest)

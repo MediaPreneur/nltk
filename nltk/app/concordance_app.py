@@ -426,13 +426,13 @@ class ConcordanceSearchView:
         self.after = self.top.after(POLL_INTERVAL, self._poll)
 
     def handle_error_loading_corpus(self, event):
-        self.status["text"] = "Error in loading " + self.var.get()
+        self.status["text"] = f"Error in loading {self.var.get()}"
         self.unfreeze_editable()
         self.clear_all()
         self.freeze_editable()
 
     def handle_corpus_loaded(self, event):
-        self.status["text"] = self.var.get() + " is loaded"
+        self.status["text"] = f"{self.var.get()} is loaded"
         self.unfreeze_editable()
         self.clear_all()
         self.query_box.focus_set()
@@ -443,14 +443,14 @@ class ConcordanceSearchView:
         self.write_results(results)
         self.status["text"] = ""
         if len(results) == 0:
-            self.status["text"] = "No results found for " + self.model.query
+            self.status["text"] = f"No results found for {self.model.query}"
         else:
             self.current_page = self.model.last_requested_page
         self.unfreeze_editable()
         self.results_box.xview_moveto(self._FRACTION_LEFT_TEXT)
 
     def handle_search_error(self, event):
-        self.status["text"] = "Error in query " + self.model.query
+        self.status["text"] = f"Error in query {self.model.query}"
         self.unfreeze_editable()
 
     def corpus_selected(self, *args):
@@ -459,7 +459,7 @@ class ConcordanceSearchView:
 
     def load_corpus(self, selection):
         if self.model.selected_corpus != selection:
-            self.status["text"] = "Loading " + selection + "..."
+            self.status["text"] = f"Loading {selection}..."
             self.freeze_editable()
             self.model.load_corpus(selection)
 
@@ -470,7 +470,7 @@ class ConcordanceSearchView:
         query = self.query_box.get()
         if len(query.strip()) == 0:
             return
-        self.status["text"] = "Searching for " + query
+        self.status["text"] = f"Searching for {query}"
         self.freeze_editable()
         self.model.search(query, self.current_page + 1)
 
@@ -483,22 +483,24 @@ class ConcordanceSearchView:
                 if pos1 < self._char_before:
                     sent, pos1, pos2 = self.pad(sent, pos1, pos2)
                 sentence = sent[pos1 - self._char_before : pos1 + self._char_after]
-                if not row == len(results):
+                if row != len(results):
                     sentence += "\n"
-                self.results_box.insert(str(row) + ".0", sentence)
+                self.results_box.insert(f"{str(row)}.0", sentence)
                 word_markers, label_markers = self.words_and_labels(sent, pos1, pos2)
                 for marker in word_markers:
                     self.results_box.tag_add(
                         self._HIGHLIGHT_WORD_TAG,
-                        str(row) + "." + str(marker[0]),
-                        str(row) + "." + str(marker[1]),
+                        f"{str(row)}.{str(marker[0])}",
+                        f"{str(row)}.{str(marker[1])}",
                     )
+
                 for marker in label_markers:
                     self.results_box.tag_add(
                         self._HIGHLIGHT_LABEL_TAG,
-                        str(row) + "." + str(marker[0]),
-                        str(row) + "." + str(marker[1]),
+                        f"{str(row)}.{str(marker[0])}",
+                        f"{str(row)}.{str(marker[1])}",
                     )
+
                 row += 1
         self.results_box["state"] = "disabled"
 
@@ -559,10 +561,7 @@ class ConcordanceSearchView:
         self.set_paging_button_states()
 
     def set_paging_button_states(self):
-        if self.current_page == 0 or self.current_page == 1:
-            self.prev["state"] = "disabled"
-        else:
-            self.prev["state"] = "normal"
+        self.prev["state"] = "disabled" if self.current_page in [0, 1] else "normal"
         if self.model.has_more_pages(self.current_page):
             self.next["state"] = "normal"
         else:
@@ -590,8 +589,7 @@ class ConcordanceSearchModel:
         self.last_sent_searched = 0
 
     def non_default_corpora(self):
-        copy = []
-        copy.extend(list(self.CORPORA.keys()))
+        copy = list(list(self.CORPORA.keys()))
         copy.remove(self.DEFAULT_CORPUS)
         copy.sort()
         return copy
@@ -648,8 +646,9 @@ class ConcordanceSearchModel:
             try:
                 ts = self.model.CORPORA[self.name]()
                 self.model.tagged_sents = [
-                    " ".join(w + "/" + t for (w, t) in sent) for sent in ts
+                    " ".join(f"{w}/{t}" for (w, t) in sent) for sent in ts
                 ]
+
                 self.model.queue.put(CORPUS_LOADED_EVENT)
             except Exception as e:
                 print(e)
